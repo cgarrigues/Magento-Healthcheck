@@ -149,7 +149,9 @@ class Memcached < Cache
 end
 
 class Redis < Cache
-
+  def initialize(host)
+    @host = host
+  end
   def statcmd
     "info"
   end
@@ -231,7 +233,7 @@ class HttpdV < ScannableCmd
   def also_check
     if saved[:httpdroot] && saved[:serverconfigfile]
       configfile = saved[:httpdroot] + "/" + saved[:serverconfigfile]
-      puts "configfile is at #{configfile}"
+      puts colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
       [[ApacheFile, configfile]]
     else
       []
@@ -384,20 +386,20 @@ class XmlFile
         if backend == "memcached"
           hostname = cache.elements["memcached/servers/server/host"].text
           port = cache.elements["memcached/servers/server/port"].text
-          back = Memcached.new
+          back = Memcached
         elsif backend == "Cm_Cache_Backend_Redis"
           hostname = cache.elements["backend_options/server"].text
           port = cache.elements["backend_options/port"].text
-          back = Redis.new
+          back = Redis
         end
         if back
-          puts
-          puts colorize(:underline) + "#{back.class} on #{hostname}:#{port}" + colorize(:off)
-          TCPSocket.open(hostname, port) do |s|
-            s.puts back.statcmd
-            s.puts back.quitcmd
-            back.scan(s)
-          end
+          puts colorize(:invert) + "Backing store #{back} on #{hostname}:#{port}." + colorize(:off)
+          $checks.unshift [back, hostname, port]
+#          TCPSocket.open(hostname, port) do |s|
+#            s.puts back.statcmd
+#            s.puts back.quitcmd
+#            back.scan(s)
+#          end
         end
       end
     end
