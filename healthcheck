@@ -149,6 +149,8 @@ class Memcached < Cache
 end
 
 class Redis < Cache
+  attr_reader :host
+  
   def initialize(host)
     @host = host
   end
@@ -196,12 +198,14 @@ class Ps < ScannableCmd
 end
 
 class Httpdt < ScannableCmd
-  def initialize(cmd)
-    @cmd = cmd
+  attr_reader :command
+  
+  def initialize(command)
+    @command = command
   end
 
   def cmd
-    "#{@cmd} -t"
+    "#{command} -t"
   end
 
   def matches
@@ -214,12 +218,14 @@ class Httpdt < ScannableCmd
 end
 
 class HttpdV < ScannableCmd
-  def initialize(cmd)
-    @cmd = cmd
+  attr_reader :command
+  
+  def initialize(command)
+    @command = command
   end
 
   def cmd
-    "#{@cmd} -V"
+    "#{command} -V"
   end
 
   def matches
@@ -242,12 +248,14 @@ class HttpdV < ScannableCmd
 end
 
 class HttpdS < ScannableCmd
-  def initialize(cmd)
-    @cmd = cmd
+  attr_reader :command
+  
+  def initialize(command)
+    @command = command
   end
 
   def cmd
-    "#{@cmd} -S"
+    "#{@command} -S"
   end
 
   def matches
@@ -259,12 +267,14 @@ class HttpdS < ScannableCmd
 end
 
 class HttpdM < ScannableCmd
-  def initialize(cmd)
-    @cmd = cmd
+  attr_reader :command
+  
+  def initialize(command)
+    @command = command
   end
 
   def cmd
-    "#{@cmd} -M"
+    "#{command} -M"
   end
 
   def matches
@@ -275,8 +285,10 @@ class HttpdM < ScannableCmd
 end
 
 class Nginx
-  def initialize(cmd)
-    @cmd = cmd
+  attr_reader :command
+  
+  def initialize(command)
+    @command = command
   end
 
   def scan
@@ -284,29 +296,29 @@ class Nginx
 end
 
 class Apache
-  def initialize(cmd)
-    @cmd = cmd
+  attr_reader :command
+  
+  def initialize(command)
+    @command = command
   end
 
   def scan
   end
 
   def also_check
-    [[Httpdt, @cmd],
-     [HttpdV, @cmd], 
-     [HttpdS, @cmd], 
-     [HttpdM, @cmd],
+    [[Httpdt, @command],
+     [HttpdV, @command], 
+     [HttpdS, @command], 
+     [HttpdM, @command],
     ]
   end
 end
 
 class ApacheFile < Scannable
+  attr_reader :filename
+  
   def initialize(filename)
     @filename = filename
-  end
-
-  def filename
-    return @filename
   end
 
   def cleanup(value)
@@ -339,23 +351,25 @@ class ApacheFile < Scannable
 end
 
 class DocumentRoot
+  attr_reader :rootpath
+
   def initialize(rootpath)
     @rootpath = Pathname.new rootpath
   end
 
   def scan
     puts
-    puts colorize(:underline) + @rootpath + colorize(:off)
-    if @rootpath.exist?
-      etcpath = @rootpath + "app/etc"
+    puts colorize(:underline) + rootpath + colorize(:off)
+    if rootpath.exist?
+      etcpath = rootpath + "app/etc"
       if etcpath.exist?
         Dir.glob(etcpath + '*.xml').each do |xmlfile|
           $checks.unshift [XmlFile, xmlfile]
         end
       else
-        puts colorize(:redbg) + @rootpath + " is not a magento root." + colorize(:off)
-        Dir.entries(@rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? @rootpath+file}.each do |dir|
-          etcpath = @rootpath + dir + "app/etc"
+        puts colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
+        Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
+          etcpath = rootpath + dir + "app/etc"
           if etcpath.exist?
             puts colorize(:invert) + "But #{etcpath} is." + colorize(:off)
             Dir.glob(etcpath + '*.xml').each do |xmlfile|
@@ -365,20 +379,22 @@ class DocumentRoot
         end
       end
     else
-      puts colorize(:redbg) + @rootpath + " does not exist" + colorize(:off)
+      puts colorize(:redbg) + rootpath + " does not exist" + colorize(:off)
     end
   end
 end
 
 class XmlFile
+  attr_reader :filename
+  
   def initialize(filename)
     @filename = Pathname.new filename
   end
 
   def scan
     puts
-    puts colorize(:underline) + @filename + colorize(:off)
-    doc = REXML::Document.new File.new(@filename, "r")
+    puts colorize(:underline) + filename + colorize(:off)
+    doc = REXML::Document.new File.new(filename, "r")
     doc.elements.each("config/global/cache") do |cache|
       backend = cache.elements["backend"]
       unless backend.nil?
