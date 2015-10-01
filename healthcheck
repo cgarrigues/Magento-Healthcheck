@@ -51,8 +51,12 @@ class Scannable
       return ((Integer data) == value)
     elsif test == ">"
       return ((Integer data) > value)
+    elsif test == "<"
+      return ((Integer data) < value)
     elsif test == ">="
       return ((Integer data) >= value)
+    elsif test == "<="
+      return ((Integer data) <= value)
     elsif test == :okay
       return true
     elsif test == :save
@@ -304,6 +308,60 @@ class Apache
   end
 end
 
+class MysqlCommand < ScannableCmd
+  attr_reader :hostname
+  attr_reader :username
+  attr_reader :password
+  attr_reader :dbname
+
+  def initialize(hostname, username, password, dbname)
+    @hostname = hostname
+    @username = username
+    @password = password
+    @dbname = dbname
+  end
+  
+  def scan
+    puts
+    puts colorize(:underline) + cmd + colorize(:off)
+    open("|mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}' 2>&1") do |s|
+      while (line = s.gets)
+        if (line = scanline line.chop)
+          puts line
+        end
+      end
+    end
+  end
+end
+
+class MysqlStatus < MysqlCommand
+  def cmd
+    "show global status"
+  end
+
+  def matches
+    {
+      /Aborted_clients\s(\S+)/ => [["<", 100]],
+      /Aborted_connects\s(\S+)/ => [["<", 100]],
+      /Table_locks_waited\s(\S+)/ => [["<", 100]],
+    }
+  end
+end
+
+class MysqlVariables < MysqlCommand
+  def cmd
+    "show global variables"
+  end
+
+  def matches
+    {
+      /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
+      /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024]],
+      /tmp_table_size\s(\S+)/ => [[">", 128*1024*1024]],
+    }
+  end
+end
+
 class Mysql
   attr_reader :args
 
@@ -315,7 +373,8 @@ class Mysql
   end
 
   def also_check
-    []
+    [[MysqlStatus, *args],
+     [MysqlVariables, *args]]
   end
 end
 
