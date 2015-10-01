@@ -114,6 +114,12 @@ class Scannable
 end
 
 class ScannableCmd < Scannable
+  attr_reader :command
+  
+  def initialize(command = '')
+    @command = command
+  end
+
   def scan
     puts
     puts colorize(:underline) + cmd + colorize(:off)
@@ -128,6 +134,16 @@ class ScannableCmd < Scannable
 end
 
 class Cache < ScannableCmd
+  attr_reader :hostname
+  attr_reader :port
+  
+  def initialize(hostname, port)
+    @hostname = hostname
+    @port = port
+    puts hostname
+    puts port
+  end
+
   def quitcmd
     "quit"
   end
@@ -149,15 +165,6 @@ class Memcached < Cache
 end
 
 class Redis < Cache
-  attr_reader :hostname
-  attr_reader :port
-  
-  def initialize(hostname, port)
-    @hostname = hostname
-    @port = port
-    puts hostname
-    puts port
-  end
   def statcmd
     "info"
   end
@@ -202,12 +209,6 @@ class Ps < ScannableCmd
 end
 
 class Httpdt < ScannableCmd
-  attr_reader :command
-  
-  def initialize(command)
-    @command = command
-  end
-
   def cmd
     "#{command} -t"
   end
@@ -222,12 +223,6 @@ class Httpdt < ScannableCmd
 end
 
 class HttpdV < ScannableCmd
-  attr_reader :command
-  
-  def initialize(command)
-    @command = command
-  end
-
   def cmd
     "#{command} -V"
   end
@@ -252,12 +247,6 @@ class HttpdV < ScannableCmd
 end
 
 class HttpdS < ScannableCmd
-  attr_reader :command
-  
-  def initialize(command)
-    @command = command
-  end
-
   def cmd
     "#{@command} -S"
   end
@@ -271,12 +260,6 @@ class HttpdS < ScannableCmd
 end
 
 class HttpdM < ScannableCmd
-  attr_reader :command
-  
-  def initialize(command)
-    @command = command
-  end
-
   def cmd
     "#{command} -M"
   end
@@ -436,6 +419,7 @@ while check = $checks.shift do
     objclass = check.shift
     item = objclass.new *check
   else
+    puts check.inspect
     item = check.new
   end
   item.scan
