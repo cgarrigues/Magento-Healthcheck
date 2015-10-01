@@ -140,12 +140,24 @@ class Cache < ScannableCmd
   def initialize(hostname, port)
     @hostname = hostname
     @port = port
-    puts hostname
-    puts port
   end
 
   def quitcmd
     "quit"
+  end
+
+  def scan
+    puts
+    puts colorize(:underline) + "#{self.class} #{hostname}:#{port}" + colorize(:off)
+    TCPSocket.open(hostname, port) do |s|
+      s.puts statcmd + "\r"
+      s.puts quitcmd + "\r"
+      while (line = s.gets)
+        if (line = scanline line.chop)
+          puts line
+        end
+      end
+    end
   end
 end
 
@@ -398,11 +410,6 @@ class XmlFile
         if back
           puts colorize(:invert) + "Backing store #{back} on #{hostname}:#{port}." + colorize(:off)
           $checks.unshift [back, hostname, port]
-#          TCPSocket.open(hostname, port) do |s|
-#            s.puts back.statcmd
-#            s.puts back.quitcmd
-#            back.scan(s)
-#          end
         end
       end
     end
