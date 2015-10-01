@@ -1,0 +1,418 @@
+#!/usr/bin/ruby
+
+require 'rexml/document'
+require 'socket'
+require 'optparse'
+require 'pathname'
+
+$options = {}
+OptionParser.new do |opt|
+  opt.on('-v', '--verbose', 'Show all output of commands') { |o| $options[:verbose] = o}
+end.parse!
+
+magentohome = ARGV[0]
+
+if magentohome
+  Dir.chdir magentohome
+end
+
+xmlpath = "app/etc/*.xml"
+#xmlpath = "app/etc/*.xml.additional"
+
+Effects = {
+  :off => 0,
+  :bright => 1,
+  :underline => 4,
+  :blink => 5,
+  :invert => 7,
+  :hide => 8,
+  :blackfg => 30,
+  :redfg => 31,
+  :greenfg => 32,
+  :yellowfg => 33,
+  :bluefg => 34,
+  :magentafg => 35,
+  :cyanfg => 36,
+  :whitefg => 37,
+  :defaultfg => 39,
+  :blackbg => 40,
+  :redbg => 41,
+  :greenbg => 42,
+  :yellowbg => 43,
+  :bluebg => 44,
+  :magentabg => 45,
+  :cyanbg => 46,
+  :whitebg => 47,
+  :defaultbg => 49,
+}
+
+def colorize(key)
+  effect = Effects[key]
+  return "[#{effect}m"
+end
+
+class Scannable
+
+  @@saved = {}
+  def okay(data, test, value)
+    data = cleanup(data)
+    if test == "="
+      return ((Integer data) == value)
+    elsif test == ">"
+      return ((Integer data) > value)
+    elsif test == ">="
+      return ((Integer data) >= value)
+    elsif test == :okay
+      return true
+    elsif test == :save
+      @@saved[value] = data
+      return true
+    elsif test == :alsocheck
+      unless $checks.include? [value, data]
+        $checks.unshift [value, data]
+      end
+      return true
+    else
+      return false
+    end
+  end
+
+  def saved
+    return @@saved
+  end
+  
+  def cleanup(value)
+    return(value)
+  end
+  
+  def scanline(line)
+    match = false
+    matches.each do |key, tests|
+      if matchdata = (key.match line)
+        match = true
+        (1..tests.length).to_a.reverse.each do |i|
+          (test, value) = tests[i-1]
+          if okay(matchdata[i], test, value)
+            line.insert(matchdata.end(i), colorize(:off) + colorize(:bright))
+            line.insert(matchdata.begin(i), colorize(:greenfg))
+          else
+            if test == :flag
+              line.insert(matchdata.end(i), colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright))
+            else
+              line.insert(matchdata.end(i), colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright))
+            end
+            line.insert(matchdata.begin(i), colorize(:redbg))
+          end
+        end
+        line = (colorize(:bright) + line + colorize(:off))
+      end
+    end
+    if match or $options[:verbose]
+      return line
+    end
+  end
+end
+
+class ScannableCmd < Scannable
+  def scan
+    puts
+    puts colorize(:underline) + cmd + colorize(:off)
+    open("|#{cmd} 2>&1") do |s|
+      while (line = s.gets)
+        if (line = scanline line.chop)
+          puts line
+        end
+      end
+    end
+  end
+end
+
+class Cache < ScannableCmd
+  def quitcmd
+    "quit"
+  end
+end
+
+class Memcached < Cache
+  def statcmd
+    "stats"
+  end
+
+  def cmdend
+    "END\r\n"
+  end
+
+  def matches
+    {/STAT evictions (\d+)/ => [["=", 0]],
+    }
+  end
+end
+
+class Redis < Cache
+
+  def statcmd
+    "info"
+  end
+
+  def cmdend
+    "# Keyspace\r\n"
+  end
+
+  def matches
+    {/evicted_keys:(\d+)/ => [["=", 0]],
+     /connected_clients:(\d+)/ => [[">", 0]],
+    }
+  end
+end
+
+class Sysctl < ScannableCmd
+  def cmd
+    "sysctl -a"
+  end
+
+  def matches
+    {
+      /net.ipv4.tcp_tw_recycle = (\d+)/ => [["=", 1]],
+      /net.ipv4.tcp_tw_reuse = (\d+)/ => [["=", 1]],
+      /net.ipv4.tcp_fin_timeout = (\d+)/ => [[">=", 10]],
+    }
+  end
+end
+
+class Ps < ScannableCmd
+  def cmd
+    'ps aux'
+  end
+
+  def matches
+    {
+      /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
+      /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
+      /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
+    }
+  end
+end
+
+class Httpdt < ScannableCmd
+  def initialize(cmd)
+    @cmd = cmd
+  end
+
+  def cmd
+    "#{@cmd} -t"
+  end
+
+  def matches
+    {
+      /(.*warn.*)/ => [[:flag, "!!!! WARNING !!!!"]],
+      /(.*error.*)/ => [[:flag, "!!!!!! ERROR !!!!!!"]],
+      /(Syntax OK)/ => [[:okay]],
+    }
+  end
+end
+
+class HttpdV < ScannableCmd
+  def initialize(cmd)
+    @cmd = cmd
+  end
+
+  def cmd
+    "#{@cmd} -V"
+  end
+
+  def matches
+    {
+      /Server MPM:\s+(\S+)/ => [[:okay]],
+      /^ -D HTTPD_ROOT="(\S+)"/ => [[:save, :httpdroot]],
+      /^ -D SERVER_CONFIG_FILE="(\S+)"/ => [[:save, :serverconfigfile]],
+    }
+  end
+
+  def also_check
+    if saved[:httpdroot] && saved[:serverconfigfile]
+      configfile = saved[:httpdroot] + "/" + saved[:serverconfigfile]
+      puts "configfile is at #{configfile}"
+      [[ApacheFile, configfile]]
+    else
+      []
+    end
+  end
+end
+
+class HttpdS < ScannableCmd
+  def initialize(cmd)
+    @cmd = cmd
+  end
+
+  def cmd
+    "#{@cmd} -S"
+  end
+
+  def matches
+    {
+      /default server (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
+      /namevhost (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
+    }
+  end
+end
+
+class HttpdM < ScannableCmd
+  def initialize(cmd)
+    @cmd = cmd
+  end
+
+  def cmd
+    "#{@cmd} -M"
+  end
+
+  def matches
+    {
+      /(php5_module)/ => [[:okay]],
+    }
+  end
+end
+
+class Nginx
+  def initialize(cmd)
+    @cmd = cmd
+  end
+
+  def scan
+  end
+end
+
+class Apache
+  def initialize(cmd)
+    @cmd = cmd
+  end
+
+  def scan
+  end
+
+  def also_check
+    [[Httpdt, @cmd],
+     [HttpdV, @cmd], 
+     [HttpdS, @cmd], 
+     [HttpdM, @cmd],
+    ]
+  end
+end
+
+class ApacheFile < Scannable
+  def initialize(filename)
+    @filename = filename
+  end
+
+  def filename
+    return @filename
+  end
+
+  def cleanup(value)
+    if /^"(.*)"$/ =~ value
+      value = $1
+    end
+    if /^(.*)\/$/ =~ value
+      value = $1
+    end
+    return value
+  end
+
+  def scan
+    puts
+    puts colorize(:underline) + filename + colorize(:off)
+    open(filename) do |s|
+      while (line = s.gets)
+        if (line = scanline line.chop)
+          puts line
+        end
+      end
+    end
+  end
+
+  def matches
+    {
+      /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocumentRoot]],
+    }
+  end
+end
+
+class DocumentRoot
+  def initialize(rootpath)
+    @rootpath = Pathname.new rootpath
+  end
+
+  def scan
+    puts
+    puts colorize(:underline) + @rootpath + colorize(:off)
+    if @rootpath.exist?
+      etcpath = @rootpath + "app/etc"
+      if etcpath.exist?
+        Dir.glob(etcpath + '*.xml').each do |xmlfile|
+          $checks.unshift [XmlFile, xmlfile]
+        end
+      else
+        puts colorize(:redbg) + @rootpath + " is not a magento root" + colorize(:off)
+      end
+    else
+      puts colorize(:redbg) + @rootpath + " does not exist" + colorize(:off)
+    end
+  end
+end
+
+class XmlFile
+  def initialize(filename)
+    @filename = Pathname.new filename
+  end
+
+  def scan
+    puts
+    puts colorize(:underline) + @filename + colorize(:off)
+    doc = REXML::Document.new File.new(@filename, "r")
+    doc.elements.each("config/global/cache") do |cache|
+      backend = cache.elements["backend"]
+      unless backend.nil?
+        backend = backend.text
+        if backend == "memcached"
+          hostname = cache.elements["memcached/servers/server/host"].text
+          port = cache.elements["memcached/servers/server/port"].text
+          back = Memcached.new
+        elsif backend == "Cm_Cache_Backend_Redis"
+          hostname = cache.elements["backend_options/server"].text
+          port = cache.elements["backend_options/port"].text
+          back = Redis.new
+        end
+        if back
+          puts
+          puts colorize(:underline) + "#{back.class} on #{hostname}:#{port}" + colorize(:off)
+          TCPSocket.open(hostname, port) do |s|
+            s.puts back.statcmd
+            s.puts back.quitcmd
+            back.scan(s)
+          end
+        end
+      end
+    end
+  end
+end
+
+Dir[xmlpath].each do |filename|
+end
+
+$checks = [Ps, Sysctl]
+
+while check = $checks.shift do
+  if check.is_a? Array
+    item = check[0].new check[1]
+  else
+    item = check.new
+  end
+  item.scan
+  if item.respond_to? :also_check
+    item.also_check.reverse.each do |value|
+      unless $checks.include? value
+        $checks.unshift value
+      end
+    end
+  end
+  #puts $checks.inspect
+end
