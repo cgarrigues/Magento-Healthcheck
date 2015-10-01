@@ -351,7 +351,16 @@ class DocumentRoot
           $checks.unshift [XmlFile, xmlfile]
         end
       else
-        puts colorize(:redbg) + @rootpath + " is not a magento root" + colorize(:off)
+        puts colorize(:redbg) + @rootpath + " is not a magento root." + colorize(:off)
+        Dir.entries(@rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? @rootpath+file}.each do |dir|
+          etcpath = @rootpath + dir + "app/etc"
+          if etcpath.exist?
+            puts colorize(:invert) + "But #{etcpath} is." + colorize(:off)
+            Dir.glob(etcpath + '*.xml').each do |xmlfile|
+              $checks.unshift [XmlFile, xmlfile]
+            end
+          end
+        end
       end
     else
       puts colorize(:redbg) + @rootpath + " does not exist" + colorize(:off)
