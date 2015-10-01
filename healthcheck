@@ -47,28 +47,33 @@ class Scannable
   @@saved = {}
   def okay(data, test, value)
     data = cleanup(data)
-    if test == "="
-      return ((Integer data) == value)
-    elsif test == ">"
-      return ((Integer data) > value)
-    elsif test == "<"
-      return ((Integer data) < value)
-    elsif test == ">="
-      return ((Integer data) >= value)
-    elsif test == "<="
-      return ((Integer data) <= value)
-    elsif test == :okay
-      return true
-    elsif test == :save
+    if test == :save
       @@saved[value] = data
       return true
-    elsif test == :alsocheck
-      unless $checks.include? [value, data]
-        $checks.unshift [value, data]
-      end
-      return true
     else
-      return false
+      if value.class == Symbol
+        value = Integer saved[value]
+      end
+      if test == "="
+        return ((Integer data) == value)
+      elsif test == ">"
+        return ((Integer data) > value)
+      elsif test == "<"
+        return ((Integer data) < value)
+      elsif test == ">="
+        return ((Integer data) >= value)
+      elsif test == "<="
+        return ((Integer data) <= value)
+      elsif test == :okay
+        return true
+      elsif test == :alsocheck
+        unless $checks.include? [value, data]
+          $checks.unshift [value, data]
+        end
+        return true
+      else
+        return false
+      end
     end
   end
 
@@ -91,7 +96,7 @@ class Scannable
           while test = testpairs.shift
             value = testpairs.shift
             if okay(matchdata[i], test, value)
-              unless test == :save && endinsert
+              unless endinsert
                 endinsert = colorize(:off) + colorize(:bright)
                 begininsert = colorize(:greenfg)
               end
