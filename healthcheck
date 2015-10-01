@@ -286,20 +286,20 @@ class Nginx
 end
 
 class Apache
-  attr_reader :command
-  
-  def initialize(command)
-    @command = command
+  attr_reader :args
+
+  def initialize(*args)
+    @args = args
   end
 
   def scan
   end
 
   def also_check
-    [[Httpdt, @command],
-     [HttpdV, @command], 
-     [HttpdS, @command], 
-     [HttpdM, @command],
+    [[Httpdt, *args],
+     [HttpdV, *args], 
+     [HttpdS, *args], 
+     [HttpdM, *args],
     ]
   end
 end
