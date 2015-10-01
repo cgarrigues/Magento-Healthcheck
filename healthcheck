@@ -86,18 +86,26 @@ class Scannable
       if matchdata = (key.match line)
         match = true
         (1..tests.length).to_a.reverse.each do |i|
-          (test, value) = tests[i-1]
-          if okay(matchdata[i], test, value)
-            line.insert(matchdata.end(i), colorize(:off) + colorize(:bright))
-            line.insert(matchdata.begin(i), colorize(:greenfg))
-          else
-            if test == :flag
-              line.insert(matchdata.end(i), colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright))
+          testpairs = tests[i-1]
+          endinsert = nil
+          while test = testpairs.shift
+            value = testpairs.shift
+            if okay(matchdata[i], test, value)
+              unless test == :save && endinsert
+                endinsert = colorize(:off) + colorize(:bright)
+                begininsert = colorize(:greenfg)
+              end
             else
-              line.insert(matchdata.end(i), colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright))
+              if test == :flag
+                endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+              else
+                endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+              end
+              begininsert = colorize(:redbg)
             end
-            line.insert(matchdata.begin(i), colorize(:redbg))
           end
+          line.insert(matchdata.end(i), endinsert)
+          line.insert(matchdata.begin(i), begininsert)
         end
         line = (colorize(:bright) + line + colorize(:off))
       end
@@ -356,8 +364,8 @@ class MysqlVariables < MysqlCommand
   def matches
     {
       /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
-      /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024]],
-      /tmp_table_size\s(\S+)/ => [[">", 128*1024*1024]],
+      /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024, :save, :heap_table_size]],
+      /tmp_table_size\s(\S+)/ => [[">", 128*1024*1024, "=", :heap_table_size]],
     }
   end
 end
