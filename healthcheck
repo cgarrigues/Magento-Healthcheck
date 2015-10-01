@@ -149,10 +149,14 @@ class Memcached < Cache
 end
 
 class Redis < Cache
-  attr_reader :host
+  attr_reader :hostname
+  attr_reader :port
   
-  def initialize(host)
-    @host = host
+  def initialize(hostname, port)
+    @hostname = hostname
+    @port = port
+    puts hostname
+    puts port
   end
   def statcmd
     "info"
@@ -429,7 +433,8 @@ $checks = [Ps, Sysctl]
 
 while check = $checks.shift do
   if check.is_a? Array
-    item = check[0].new check[1]
+    objclass = check.shift
+    item = objclass.new *check
   else
     item = check.new
   end
