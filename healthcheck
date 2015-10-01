@@ -10,15 +10,6 @@ OptionParser.new do |opt|
   opt.on('-v', '--verbose', 'Show all output of commands') { |o| $options[:verbose] = o}
 end.parse!
 
-magentohome = ARGV[0]
-
-if magentohome
-  Dir.chdir magentohome
-end
-
-xmlpath = "app/etc/*.xml"
-#xmlpath = "app/etc/*.xml.additional"
-
 Effects = {
   :off => 0,
   :bright => 1,
@@ -414,9 +405,6 @@ class XmlFile
       end
     end
   end
-end
-
-Dir[xmlpath].each do |filename|
 end
 
 $checks = [Ps, Sysctl]
