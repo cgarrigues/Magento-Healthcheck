@@ -304,6 +304,21 @@ class Apache
   end
 end
 
+class Mysql
+  attr_reader :args
+
+  def initialize(*args)
+    @args = args
+  end
+
+  def scan
+  end
+
+  def also_check
+    []
+  end
+end
+
 class ApacheFile < Scannable
   attr_reader :filename
   
@@ -411,6 +426,15 @@ class XmlFile
       port = redis_session.elements["port"].text
       puts colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
       $checks.unshift [Redis, hostname, port]
+    end
+    if resources = doc.elements["config/global/resources"]
+      connection = resources.elements["default_setup/connection"]
+      hostname = connection.elements["host"].text
+      username = connection.elements["username"].text
+      password = connection.elements["password"].text
+      dbname = connection.elements["dbname"].text
+      puts colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{hostname}." + colorize(:off)
+      $checks.unshift [Mysql, hostname, username, password, dbname]
     end
   end
 end
