@@ -385,24 +385,32 @@ class XmlFile
     puts
     puts colorize(:underline) + filename + colorize(:off)
     doc = REXML::Document.new File.new(filename, "r")
-    doc.elements.each("config/global/cache") do |cache|
-      backend = cache.elements["backend"]
-      unless backend.nil?
-        backend = backend.text
-        if backend == "memcached"
-          hostname = cache.elements["memcached/servers/server/host"].text
-          port = cache.elements["memcached/servers/server/port"].text
-          back = Memcached
-        elsif backend == "Cm_Cache_Backend_Redis"
-          hostname = cache.elements["backend_options/server"].text
-          port = cache.elements["backend_options/port"].text
-          back = Redis
-        end
-        if back
-          puts colorize(:invert) + "Backing store #{back} on #{hostname}:#{port}." + colorize(:off)
-          $checks.unshift [back, hostname, port]
+    ["cache", "full_page_cache"].each do |foo|
+      doc.elements.each("config/global/#{foo}") do |cache|
+        backend = cache.elements["backend"]
+        unless backend.nil?
+          backend = backend.text
+          if backend == "memcached"
+            hostname = cache.elements["memcached/servers/server/host"].text
+            port = cache.elements["memcached/servers/server/port"].text
+            back = Memcached
+            puts colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{hostname}:#{port}." + colorize(:off)
+            $checks.unshift [Memcached, hostname, port]
+          elsif backend == "Cm_Cache_Backend_Redis"
+            hostname = cache.elements["backend_options/server"].text
+            port = cache.elements["backend_options/port"].text
+            back = Redis
+            puts colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{hostname}:#{port}." + colorize(:off)
+            $checks.unshift [Redis, hostname, port]
+          end
         end
       end
+    end
+    if redis_session = doc.elements["config/global/redis_session"]
+      hostname = redis_session.elements["host"].text
+      port = redis_session.elements["port"].text
+      puts colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
+      $checks.unshift [Redis, hostname, port]
     end
   end
 end
@@ -414,7 +422,6 @@ while check = $checks.shift do
     objclass = check.shift
     item = objclass.new *check
   else
-    puts check.inspect
     item = check.new
   end
   item.scan
