@@ -224,6 +224,7 @@ class Ps < ScannableCmd
       /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
       /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
       /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
+      /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
     }
   end
 end
@@ -357,6 +358,7 @@ class MysqlStatus < MysqlCommand
       /Aborted_clients\s(\S+)/ => [["<", 100]],
       /Aborted_connects\s(\S+)/ => [["<", 100]],
       /Table_locks_waited\s(\S+)/ => [["<", 100]],
+      /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
   end
 end
@@ -371,6 +373,43 @@ class MysqlVariables < MysqlCommand
       /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
       /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024, :save, :heap_table_size]],
       /tmp_table_size\s(\S+)/ => [[">", 128*1024*1024, "=", :heap_table_size]],
+      /(Access denied.*)/ => [[:flag, "Password issue?"]],
+    }
+  end
+end
+
+class MysqlInnodbStatus < MysqlCommand
+  def cmd
+    "show engine innodb status\\G"
+  end
+
+  def matches
+    {
+      /(Access denied.*)/ => [[:flag, "Password issue?"]],
+    }
+  end
+end
+
+class MysqlProcessList < MysqlCommand
+  def cmd
+    "show processlist"
+  end
+
+  def matches
+    {
+      /(Access denied.*)/ => [[:flag, "Password issue?"]],
+    }
+  end
+end
+
+class MysqlSlaveStatus < MysqlCommand
+  def cmd
+    "show slave status"
+  end
+
+  def matches
+    {
+      /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
   end
 end
@@ -387,7 +426,11 @@ class Mysql
 
   def also_check
     [[MysqlStatus, *args],
-     [MysqlVariables, *args]]
+     [MysqlVariables, *args],
+     [MysqlInnodbStatus, *args],
+     [MysqlProcessList, *args],
+     [MysqlSlaveStatus, *args],
+    ]
   end
 end
 
