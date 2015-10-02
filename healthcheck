@@ -225,7 +225,7 @@ class Ps < ScannableCmd
       /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
       /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
       /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
-      /redis.*\s([\/a-z]*redis-server)/ => [[:alsocheck, RedisDaemon]],
+      /redis.*\s([\/a-z]*redis-server)\s+(\S+)/ => [[:okay], [:alsocheck, RedisConf]],
     }
   end
 end
@@ -331,13 +331,6 @@ class Apache < Collection
   end
 end
 
-class RedisDaemon < Collection
-  def initialize(*args)
-    super
-    children = []
-  end
-end
-
 class MysqlCommand < ScannableCmd
   attr_reader :hostname
   attr_reader :username
@@ -437,21 +430,11 @@ class Mysql < Collection
   end
 end
 
-class ApacheFile < Scannable
+class ConfFile < Scannable
   attr_reader :filename
   
   def initialize(filename)
     @filename = filename
-  end
-
-  def cleanup(value)
-    if /^"(.*)"$/ =~ value
-      value = $1
-    end
-    if /^(.*)\/$/ =~ value
-      value = $1
-    end
-    return value
   end
 
   def scan
@@ -465,10 +448,30 @@ class ApacheFile < Scannable
       end
     end
   end
+end
 
+class RedisConf < ConfFile
   def matches
     {
       /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocumentRoot]],
+    }
+  end
+end
+
+class ApacheFile < ConfFile
+  def cleanup(value)
+    if /^"(.*)"$/ =~ value
+      value = $1
+    end
+    if /^(.*)\/$/ =~ value
+      value = $1
+    end
+    return value
+  end
+
+  def matches
+    {
+      /(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
     }
   end
 end
