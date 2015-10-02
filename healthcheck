@@ -187,10 +187,6 @@ class Memcached < Cache
     "stats"
   end
 
-  def cmdend
-    "END\r\n"
-  end
-
   def matches
     {/STAT evictions (\d+)/ => [["=", 0]],
     }
@@ -200,10 +196,6 @@ end
 class Redis < Cache
   def statcmd
     "info"
-  end
-
-  def cmdend
-    "# Keyspace\r\n"
   end
 
   def matches
