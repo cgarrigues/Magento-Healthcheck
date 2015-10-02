@@ -304,8 +304,9 @@ class HttpdV < ShellCommand
     "#{command} -V"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /Server MPM:\s+(\S+)/ => [[:okay]],
       /^ -D HTTPD_ROOT="(\S+)"/ => [[:save, :httpdroot]],
       /^ -D SERVER_CONFIG_FILE="(\S+)"/ => [[:save, :serverconfigfile]],
@@ -328,8 +329,9 @@ class HttpdS < ShellCommand
     "#{@command} -S"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /default server (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
       /namevhost (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
     }
@@ -341,8 +343,9 @@ class HttpdM < ShellCommand
     "#{command} -M"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /(php5_module)/ => [[:alsocheck, Php]]
     }
   end
@@ -353,8 +356,8 @@ class PhpV < ShellCommand
     "php -v"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    self.matches = {
       /PHP (\d+\.\d+)/ => [["ne", "5.7"]],
     }
   end
@@ -365,8 +368,9 @@ class PhpI < ShellCommand
     "php -i"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /^session.gc_maxlifetime => (\d+) => (\d+)/ => [["=", 1440], ["=", 1440]],
       /^session.gc_probability => (\d+) => (\d+)/ => [["=", 1], ["=", 1]],
       /^session.cookie_lifetime => (\d+) => (\d+)/ => [["=", 0], ["=", 0]],
@@ -452,8 +456,8 @@ class MysqlStatus < MysqlCommand
     "show global status"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    self.matches = {
       /Aborted_clients\s(\S+)/ => [["<", 1000]],
       /Aborted_connects\s(\S+)/ => [["<", 1000]],
       /Table_locks_waited\s(\S+)/ => [["<", 100]],
@@ -467,8 +471,8 @@ class MysqlVariables < MysqlCommand
     "show global variables"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    self.matches = {
       /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
       /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024, :save, :heap_table_size]],
       /tmp_table_size\s(\S+)/ => [[">", 128*1024*1024, "=", :heap_table_size]],
@@ -482,8 +486,8 @@ class MysqlInnodbStatus < MysqlCommand
     "show engine innodb status\\G"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    self.matches = {
       /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
   end
@@ -494,8 +498,8 @@ class MysqlProcessList < MysqlCommand
     "show processlist"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    self.matches = {
       /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
   end
@@ -506,8 +510,9 @@ class MysqlSlaveStatus < MysqlCommand
     "show slave status"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
   end
@@ -539,8 +544,9 @@ class ConfFile < Scannable
 end
 
 class RedisConf < ConfFile
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /^\s*(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
     }
   end
@@ -557,8 +563,9 @@ class ApacheFile < ConfFile
     return value
   end
 
-  def matches
-    {
+  def initialize(value)
+    super
+    self.matches = {
       /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocRoot]],
     }
   end
