@@ -45,6 +45,16 @@ end
 class Scannable
   attr_accessor :saved
 
+  @@matches = {}
+  
+  def matches
+    @@matches[self.class]
+  end
+
+  def matches= (val)
+    @@matches[self.class] = val
+  end
+  
   def header(what)
     puts
     puts "#{colorize(:underline)}#{self.class.superclass}: #{colorize(:bright)}#{what}#{colorize(:off)}"
@@ -92,36 +102,38 @@ class Scannable
   
   def scanline(line)
     match = false
-    matches.each do |key, tests|
-      if matchdata = (key.match line)
-        match = true
-        (1..tests.length).to_a.reverse.each do |i|
-          testpairs = tests[i-1]
-          endinsert = nil
-          while test = testpairs.shift
-            value = testpairs.shift
-            if okay(matchdata[i], test, value)
-              unless endinsert
-                endinsert = colorize(:off) + colorize(:bright)
-                begininsert = colorize(:greenfg)
-              end
-            else
-              if test == :flag
-                endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+    if matches
+      matches.each do |key, tests|
+        if matchdata = (key.match line)
+          match = true
+          (1..tests.length).to_a.reverse.each do |i|
+            testpairs = tests[i-1]
+            endinsert = nil
+            while test = testpairs.shift
+              value = testpairs.shift
+              if okay(matchdata[i], test, value)
+                unless endinsert
+                  endinsert = colorize(:off) + colorize(:bright)
+                  begininsert = colorize(:greenfg)
+                end
               else
-                endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+                if test == :flag
+                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+                else
+                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+                end
+                begininsert = colorize(:redbg)
               end
-              begininsert = colorize(:redbg)
             end
+            line.insert(matchdata.end(i), endinsert)
+            line.insert(matchdata.begin(i), begininsert)
           end
-          line.insert(matchdata.end(i), endinsert)
-          line.insert(matchdata.begin(i), begininsert)
+          line = (colorize(:bright) + line + colorize(:off))
         end
-        line = (colorize(:bright) + line + colorize(:off))
       end
-    end
-    if match or $options[:verbose]
-      return line
+      if match or $options[:verbose]
+        return line
+      end
     end
   end
   
@@ -187,8 +199,10 @@ class Memcached < Cache
     "stats"
   end
 
-  def matches
-    {/STAT evictions (\d+)/ => [["=", 0]],
+  def initialize(*args)
+    super
+    self.matches = {
+      /STAT evictions (\d+)/ => [["=", 0]],
     }
   end
 end
@@ -198,9 +212,11 @@ class Redis < Cache
     "info"
   end
 
-  def matches
-    {/evicted_keys:(\d+)/ => [["=", 0]],
-     /connected_clients:(\d+)/ => [[">", 0]],
+  def initialize(*args)
+    super
+    self.matches = {
+      /evicted_keys:(\d+)/ => [["=", 0]],
+      /connected_clients:(\d+)/ => [[">", 0]],
     }
   end
 end
@@ -210,8 +226,9 @@ class Sysctl < ShellCommand
     "sysctl -a"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /net.ipv4.tcp_tw_recycle = (\d+)/ => [["=", 1]],
       /net.ipv4.tcp_tw_reuse = (\d+)/ => [["=", 1]],
       /net.ipv4.tcp_fin_timeout = (\d+)/ => [[">=", 10]],
@@ -223,21 +240,11 @@ class Netstat < ShellCommand
   def cmd
     "netstat -nap"
   end
-
-  def matches
-    {
-    }
-  end
 end
 
 class Iostat < ShellCommand
   def cmd
     "iostat -dx"
-  end
-
-  def matches
-    {
-    }
   end
 end
 
@@ -245,32 +252,17 @@ class Dmesg < ShellCommand
   def cmd
     "dmesg"
   end
-
-  def matches
-    {
-    }
-  end
 end
 
 class Free < ShellCommand
   def cmd
     "free -mo"
   end
-
-  def matches
-    {
-    }
-  end
 end
 
 class Uptime < ShellCommand
   def cmd
     "uptime"
-  end
-
-  def matches
-    {
-    }
   end
 end
 
@@ -279,8 +271,9 @@ class Ps < ShellCommand
     'ps aux'
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
       /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
       /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
@@ -288,6 +281,7 @@ class Ps < ShellCommand
       /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf]],
     }
   end
+  
 end
 
 class Httpdt < ShellCommand
@@ -295,8 +289,9 @@ class Httpdt < ShellCommand
     "#{command} -t"
   end
 
-  def matches
-    {
+  def initialize(*args)
+    super
+    self.matches = {
       /(.*warn.*)/ => [[:flag, "!!!! WARNING !!!!"]],
       /(.*error.*)/ => [[:flag, "!!!!!! ERROR !!!!!!"]],
       /(Syntax OK)/ => [[:okay]],
