@@ -449,7 +449,7 @@ end
 class RedisConf < ConfFile
   def matches
     {
-      /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocumentRoot]],
+      /(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
     }
   end
 end
@@ -467,7 +467,7 @@ class ApacheFile < ConfFile
 
   def matches
     {
-      /(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
+      /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocumentRoot]],
     }
   end
 end
