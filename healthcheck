@@ -5,7 +5,7 @@ require 'socket'
 require 'optparse'
 require 'pathname'
 
-$options = {}
+$options = Hash.new
 OptionParser.new do |opt|
   opt.on('-v', '--verbose', 'Show all output of commands') { |o| $options[:verbose] = o}
 end.parse!
@@ -45,7 +45,7 @@ end
 class Scannable
   attr_accessor :saved
 
-  @@matches = {}
+  @@matches = Hash.new { |hash, key| hash[key] = Hash.new }
   
   def matches
     @@matches[self.class]
@@ -102,43 +102,41 @@ class Scannable
   
   def scanline(line)
     match = false
-    if matches
-      matches.each do |key, tests|
-        if matchdata = (key.match line)
-          match = true
-          (1..tests.length).to_a.reverse.each do |i|
-            testpairs = tests[i-1]
-            endinsert = nil
-            while test = testpairs.shift
-              value = testpairs.shift
-              if okay(matchdata[i], test, value)
-                unless endinsert
-                  endinsert = colorize(:off) + colorize(:bright)
-                  begininsert = colorize(:greenfg)
-                end
-              else
-                if test == :flag
-                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
-                else
-                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
-                end
-                begininsert = colorize(:redbg)
+    matches.each do |key, tests|
+      if matchdata = (key.match line)
+        match = true
+        (1..tests.length).to_a.reverse.each do |i|
+          testpairs = tests[i-1]
+          endinsert = nil
+          while test = testpairs.shift
+            value = testpairs.shift
+            if okay(matchdata[i], test, value)
+              unless endinsert
+                endinsert = colorize(:off) + colorize(:bright)
+                begininsert = colorize(:greenfg)
               end
+            else
+              if test == :flag
+                endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+              else
+                endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+              end
+              begininsert = colorize(:redbg)
             end
-            line.insert(matchdata.end(i), endinsert)
-            line.insert(matchdata.begin(i), begininsert)
           end
-          line = (colorize(:bright) + line + colorize(:off))
+          line.insert(matchdata.end(i), endinsert)
+          line.insert(matchdata.begin(i), begininsert)
         end
+        line = (colorize(:bright) + line + colorize(:off))
       end
-      if match or $options[:verbose]
-        return line
-      end
+    end
+    if match or $options[:verbose]
+      return line
     end
   end
   
   def scan
-    self.saved = {}
+    self.saved = Hash.new
     header
     openstream do |s|
       while (line = s.gets)
@@ -214,7 +212,6 @@ class Redis < Cache
 
   def initialize(*args)
     super
-    @@matches[Sysctl] = {}
     @@matches[Sysctl][/vm.overcommit_memory = (\d+)/] = [["=", 1]]
     self.matches = {
       /evicted_keys:(\d+)/ => [["=", 0]],
@@ -591,7 +588,7 @@ class DocRoot < DocumentRoot
   end
   
   def scan
-    self.saved = {}
+    self.saved = Hash.new
     header
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
@@ -632,7 +629,7 @@ class MagentoXmlFile < XmlFile
   end
   
   def scan
-    self.saved = {}
+    self.saved = Hash.new
     header
     doc = REXML::Document.new File.new(filename, "r")
     ["cache", "full_page_cache"].each do |foo|
