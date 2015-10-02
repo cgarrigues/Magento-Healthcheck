@@ -357,6 +357,7 @@ class PhpV < ShellCommand
   end
 
   def initialize(*args)
+    super
     self.matches = {
       /PHP (\d+\.\d+)/ => [["ne", "5.7"]],
     }
@@ -457,6 +458,7 @@ class MysqlStatus < MysqlCommand
   end
 
   def initialize(*args)
+    super
     self.matches = {
       /Aborted_clients\s(\S+)/ => [["<", 1000]],
       /Aborted_connects\s(\S+)/ => [["<", 1000]],
@@ -472,6 +474,7 @@ class MysqlVariables < MysqlCommand
   end
 
   def initialize(*args)
+    super
     self.matches = {
       /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
       /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024, :save, :heap_table_size]],
@@ -487,6 +490,7 @@ class MysqlInnodbStatus < MysqlCommand
   end
 
   def initialize(*args)
+    super
     self.matches = {
       /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
@@ -499,6 +503,7 @@ class MysqlProcessList < MysqlCommand
   end
 
   def initialize(*args)
+    super
     self.matches = {
       /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
