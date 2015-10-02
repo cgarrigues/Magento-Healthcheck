@@ -225,7 +225,7 @@ class Ps < ScannableCmd
       /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
       /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
       /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
-      /redis.*\s([\/a-z]*redis-server)\s+(\S+)/ => [[:okay], [:alsocheck, RedisConf]],
+      /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf]],
     }
   end
 end
@@ -293,17 +293,6 @@ class HttpdM < ScannableCmd
   end
 end
 
-class Nginx
-  attr_reader :command
-  
-  def initialize(command)
-    @command = command
-  end
-
-  def scan
-  end
-end
-
 class Collection
   attr_reader :args
   attr_accessor :children
@@ -321,6 +310,13 @@ class Collection
     else
       return []
     end
+  end
+end
+
+class Nginx < Collection
+  def initialize(*args)
+    super
+    @children = []
   end
 end
 
