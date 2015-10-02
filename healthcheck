@@ -187,7 +187,7 @@ class Cache < ShellCommand
 
   def openstream
     TCPSocket.open(hostname, port) do |s|
-      s.puts statcmd + "\r"
+      s.puts cmd + "\r"
       s.puts quitcmd + "\r"
       yield s
     end
@@ -195,7 +195,7 @@ class Cache < ShellCommand
 end
 
 class Memcached < Cache
-  def statcmd
+  def cmd
     "stats"
   end
 
@@ -208,7 +208,7 @@ class Memcached < Cache
 end
 
 class Redis < Cache
-  def statcmd
+  def cmd
     "info"
   end
 
