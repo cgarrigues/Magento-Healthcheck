@@ -43,8 +43,7 @@ def colorize(key)
 end
 
 class Scannable
-
-  @@saved = {}
+  attr_accessor :saved
 
   def header(what)
     puts
@@ -54,7 +53,7 @@ class Scannable
   def okay(data, test, value)
     data = cleanup(data)
     if test == :save
-      @@saved[value] = data
+      saved[value] = data
       return true
     else
       if value.class == Symbol
@@ -87,10 +86,6 @@ class Scannable
     end
   end
 
-  def saved
-    return @@saved
-  end
-  
   def cleanup(value)
     return(value)
   end
@@ -139,6 +134,7 @@ class ShellCommand < Scannable
   end
 
   def scan
+    self.saved = {}
     header cmd
     open("|#{cmd} 2>&1") do |s|
       while (line = s.gets)
@@ -164,6 +160,7 @@ class Cache < ShellCommand
   end
 
   def scan
+    self.saved = {}
     header "#{hostname}:#{port}"
     TCPSocket.open(hostname, port) do |s|
       s.puts statcmd + "\r"
@@ -390,6 +387,7 @@ class MysqlCommand < ShellCommand
   end
   
   def scan
+    self.saved = {}
     header cmd
     open("|mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}' 2>&1") do |s|
       while (line = s.gets)
@@ -482,6 +480,7 @@ class ConfFile < Scannable
   end
 
   def scan
+    self.saved = {}
     header filename
     open(filename) do |s|
       while (line = s.gets)
@@ -530,6 +529,7 @@ class DocRoot < DocumentRoot
   end
 
   def scan
+    self.saved = {}
     header rootpath
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
@@ -566,6 +566,7 @@ class MagentoXmlFile < XmlFile
   end
 
   def scan
+    self.saved = {}
     header filename
     doc = REXML::Document.new File.new(filename, "r")
     ["cache", "full_page_cache"].each do |foo|
