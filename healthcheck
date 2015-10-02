@@ -225,6 +225,7 @@ class Ps < ScannableCmd
       /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
       /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
       /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
+      /redis.*\s([\/a-z]*redis-server)/ => [[:alsocheck, RedisDaemon]],
     }
   end
 end
@@ -303,8 +304,9 @@ class Nginx
   end
 end
 
-class Apache
+class Collection
   attr_reader :args
+  attr_accessor :children
 
   def initialize(*args)
     @args = args
@@ -314,11 +316,25 @@ class Apache
   end
 
   def also_check
-    [[Httpdt, *args],
-     [HttpdV, *args], 
-     [HttpdS, *args], 
-     [HttpdM, *args],
-    ]
+    if children
+      return children.map {|child| [child, *args]}
+    else
+      return []
+    end
+  end
+end
+
+class Apache < Collection
+  def initialize(*args)
+    super
+    @children = [Httpdt, HttpdV, HttpdS, HttpdM]
+  end
+end
+
+class RedisDaemon < Collection
+  def initialize(*args)
+    super
+    children = []
   end
 end
 
@@ -414,23 +430,10 @@ class MysqlSlaveStatus < MysqlCommand
   end
 end
 
-class Mysql
-  attr_reader :args
-
+class Mysql < Collection
   def initialize(*args)
-    @args = args
-  end
-
-  def scan
-  end
-
-  def also_check
-    [[MysqlStatus, *args],
-     [MysqlVariables, *args],
-     [MysqlInnodbStatus, *args],
-     [MysqlProcessList, *args],
-     [MysqlSlaveStatus, *args],
-    ]
+    super
+    @children = [MysqlStatus, MysqlVariables, MysqlInnodbStatus, MysqlProcessList, MysqlSlaveStatus]
   end
 end
 
