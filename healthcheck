@@ -51,8 +51,10 @@ class Scannable
     @@matches[self.class]
   end
 
-  def matches= (val)
-    @@matches[self.class] = val
+  def matches= (newmatches)
+    newmatches.each do |key, value|
+      @@matches[self.class][key] = value
+    end
   end
   
   def header
@@ -227,9 +229,11 @@ class Sysctl < ShellCommand
 
   def initialize(*args)
     super
-    matches[/net.ipv4.tcp_tw_recycle = (\d+)/] = [["=", 1]]
-    matches[/net.ipv4.tcp_tw_reuse = (\d+)/] = [["=", 1]]
-    matches[/net.ipv4.tcp_fin_timeout = (\d+)/] = [[">=", 10]]
+    self.matches = {
+      /net.ipv4.tcp_tw_recycle = (\d+)/ => [["=", 1]],
+      /net.ipv4.tcp_tw_reuse = (\d+)/ => [["=", 1]],
+      /net.ipv4.tcp_fin_timeout = (\d+)/ => [["=", 10]],
+    }
   end
 end
 
