@@ -45,6 +45,12 @@ end
 class Scannable
 
   @@saved = {}
+
+  def header(what)
+    puts
+    puts "#{colorize(:underline)}#{self.class.superclass}: #{colorize(:bright)}#{what}#{colorize(:off)}"
+  end
+
   def okay(data, test, value)
     data = cleanup(data)
     if test == :save
@@ -64,6 +70,8 @@ class Scannable
         return ((Integer data) >= value)
       elsif test == "<="
         return ((Integer data) <= value)
+      elsif test == "eq"
+        return (data == value)
       elsif test == "ne"
         return (data != value)
       elsif test == :okay
@@ -123,7 +131,7 @@ class Scannable
   end
 end
 
-class ScannableCmd < Scannable
+class ShellCommand < Scannable
   attr_reader :command
   
   def initialize(command = '')
@@ -131,8 +139,7 @@ class ScannableCmd < Scannable
   end
 
   def scan
-    puts
-    puts colorize(:underline) + cmd + colorize(:off)
+    header cmd
     open("|#{cmd} 2>&1") do |s|
       while (line = s.gets)
         if (line = scanline line.chop)
@@ -143,7 +150,7 @@ class ScannableCmd < Scannable
   end
 end
 
-class Cache < ScannableCmd
+class Cache < ShellCommand
   attr_reader :hostname
   attr_reader :port
   
@@ -157,8 +164,7 @@ class Cache < ScannableCmd
   end
 
   def scan
-    puts
-    puts colorize(:underline) + "#{self.class} #{hostname}:#{port}" + colorize(:off)
+    header "#{hostname}:#{port}"
     TCPSocket.open(hostname, port) do |s|
       s.puts statcmd + "\r"
       s.puts quitcmd + "\r"
@@ -202,7 +208,7 @@ class Redis < Cache
   end
 end
 
-class Sysctl < ScannableCmd
+class Sysctl < ShellCommand
   def cmd
     "sysctl -a"
   end
@@ -216,7 +222,7 @@ class Sysctl < ScannableCmd
   end
 end
 
-class Ps < ScannableCmd
+class Ps < ShellCommand
   def cmd
     'ps aux'
   end
@@ -232,7 +238,7 @@ class Ps < ScannableCmd
   end
 end
 
-class Httpdt < ScannableCmd
+class Httpdt < ShellCommand
   def cmd
     "#{command} -t"
   end
@@ -246,7 +252,7 @@ class Httpdt < ScannableCmd
   end
 end
 
-class HttpdV < ScannableCmd
+class HttpdV < ShellCommand
   def cmd
     "#{command} -V"
   end
@@ -270,7 +276,7 @@ class HttpdV < ScannableCmd
   end
 end
 
-class HttpdS < ScannableCmd
+class HttpdS < ShellCommand
   def cmd
     "#{@command} -S"
   end
@@ -283,7 +289,7 @@ class HttpdS < ScannableCmd
   end
 end
 
-class HttpdM < ScannableCmd
+class HttpdM < ShellCommand
   def cmd
     "#{command} -M"
   end
@@ -295,7 +301,7 @@ class HttpdM < ScannableCmd
   end
 end
 
-class PhpV < ScannableCmd
+class PhpV < ShellCommand
   def cmd
     "php -v"
   end
@@ -303,6 +309,28 @@ class PhpV < ScannableCmd
   def matches
     {
       /PHP (\d+\.\d+)/ => [["ne", "5.7"]],
+    }
+  end
+end
+
+class PhpI < ShellCommand
+  def cmd
+    "php -i"
+  end
+
+  def matches
+    {
+      /^session.gc_maxlifetime => (\d+) => (\d+)/ => [["=", 1440], ["=", 1440]],
+      /^session.gc_probability => (\d+) => (\d+)/ => [["=", 1], ["=", 1]],
+      /^session.cookie_lifetime => (\d+) => (\d+)/ => [["=", 0], ["=", 0]],
+      /^memory_limit => (\d+)M => (\d+)M/ => [[">=", 256], [">=", 256]],
+      /^max_execution_time => (\d+) => (\d+)/ => [["=", 18000], ["=", 18000]],
+      /^max_input_vars => (\d+) => (\d+)/ => [[">=", 2000], [">=", 2000]],
+      /^auto_prepend_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+      /^auto_append_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+      /^disable_functions => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+      /^open_basedir => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+      /^safe_mode => (.+) => (.+)/ => [["eq", "Off"], ["eq", "Off"]],
     }
   end
 end
@@ -337,7 +365,7 @@ end
 class Php < Collection
   def initialize(*args)
     super
-    @children = [PhpV]
+    @children = [PhpV, PhpI]
   end
 end
 
@@ -348,7 +376,7 @@ class Apache < Collection
   end
 end
 
-class MysqlCommand < ScannableCmd
+class MysqlCommand < ShellCommand
   attr_reader :hostname
   attr_reader :username
   attr_reader :password
@@ -362,8 +390,7 @@ class MysqlCommand < ScannableCmd
   end
   
   def scan
-    puts
-    puts colorize(:underline) + cmd + colorize(:off)
+    header cmd
     open("|mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}' 2>&1") do |s|
       while (line = s.gets)
         if (line = scanline line.chop)
@@ -455,8 +482,7 @@ class ConfFile < Scannable
   end
 
   def scan
-    puts
-    puts colorize(:underline) + filename + colorize(:off)
+    header filename
     open(filename) do |s|
       while (line = s.gets)
         if (line = scanline line.chop)
@@ -488,12 +514,15 @@ class ApacheFile < ConfFile
 
   def matches
     {
-      /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocumentRoot]],
+      /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocRoot]],
     }
   end
 end
 
-class DocumentRoot
+class DocumentRoot < Scannable
+end
+  
+class DocRoot < DocumentRoot
   attr_reader :rootpath
 
   def initialize(rootpath)
@@ -501,13 +530,12 @@ class DocumentRoot
   end
 
   def scan
-    puts
-    puts colorize(:underline) + rootpath + colorize(:off)
+    header rootpath
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
       if etcpath.exist?
         Dir.glob(etcpath + '*.xml').each do |xmlfile|
-          $checks.unshift [XmlFile, xmlfile]
+          $checks.unshift [MagentoXmlFile, xmlfile]
         end
       else
         puts colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
@@ -516,7 +544,7 @@ class DocumentRoot
           if etcpath.exist?
             puts colorize(:invert) + "But #{etcpath} is." + colorize(:off)
             Dir.glob(etcpath + '*.xml').each do |xmlfile|
-              $checks.unshift [XmlFile, xmlfile]
+              $checks.unshift [MagentoXmlFile, xmlfile]
             end
           end
         end
@@ -527,7 +555,10 @@ class DocumentRoot
   end
 end
 
-class XmlFile
+class XmlFile < Scannable
+end
+
+class MagentoXmlFile < XmlFile
   attr_reader :filename
   
   def initialize(filename)
@@ -535,8 +566,7 @@ class XmlFile
   end
 
   def scan
-    puts
-    puts colorize(:underline) + filename + colorize(:off)
+    header filename
     doc = REXML::Document.new File.new(filename, "r")
     ["cache", "full_page_cache"].each do |foo|
       doc.elements.each("config/global/#{foo}") do |cache|
