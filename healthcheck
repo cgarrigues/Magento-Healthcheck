@@ -214,6 +214,8 @@ class Redis < Cache
 
   def initialize(*args)
     super
+    @@matches[Sysctl] = {}
+    @@matches[Sysctl][/vm.overcommit_memory = (\d+)/] = [["=", 1]]
     self.matches = {
       /evicted_keys:(\d+)/ => [["=", 0]],
       /connected_clients:(\d+)/ => [[">", 0]],
@@ -228,11 +230,9 @@ class Sysctl < ShellCommand
 
   def initialize(*args)
     super
-    self.matches = {
-      /net.ipv4.tcp_tw_recycle = (\d+)/ => [["=", 1]],
-      /net.ipv4.tcp_tw_reuse = (\d+)/ => [["=", 1]],
-      /net.ipv4.tcp_fin_timeout = (\d+)/ => [[">=", 10]],
-    }
+    matches[/net.ipv4.tcp_tw_recycle = (\d+)/] = [["=", 1]]
+    matches[/net.ipv4.tcp_tw_reuse = (\d+)/] = [["=", 1]]
+    matches[/net.ipv4.tcp_fin_timeout = (\d+)/] = [[">=", 10]]
   end
 end
 
