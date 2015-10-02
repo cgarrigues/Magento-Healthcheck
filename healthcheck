@@ -55,9 +55,9 @@ class Scannable
     @@matches[self.class] = val
   end
   
-  def header(what)
+  def header
     puts
-    puts "#{colorize(:underline)}#{self.class.superclass}: #{colorize(:bright)}#{what}#{colorize(:off)}"
+    puts "#{colorize(:underline)}#{self.class.superclass}: #{colorize(:bright)}#{label}#{colorize(:off)}"
   end
 
   def okay(data, test, value)
@@ -139,7 +139,7 @@ class Scannable
   
   def scan
     self.saved = {}
-    header label
+    header
     openstream do |s|
       while (line = s.gets)
         if (line = scanline line.chop)
@@ -574,9 +574,13 @@ class DocRoot < DocumentRoot
     @rootpath = Pathname.new rootpath
   end
 
+  def label
+    rootpath
+  end
+  
   def scan
     self.saved = {}
-    header rootpath
+    header
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
       if etcpath.exist?
@@ -611,9 +615,13 @@ class MagentoXmlFile < XmlFile
     @filename = Pathname.new filename
   end
 
+  def label
+    filename
+  end
+  
   def scan
     self.saved = {}
-    header filename
+    header
     doc = REXML::Document.new File.new(filename, "r")
     ["cache", "full_page_cache"].each do |foo|
       doc.elements.each("config/global/#{foo}") do |cache|
