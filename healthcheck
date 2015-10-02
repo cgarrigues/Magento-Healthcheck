@@ -170,7 +170,7 @@ class Cache < ShellCommand
   end
 
   def label
-    "#{hostname}:#{port}"
+    "#{self.class} at #{hostname}:#{port}"
   end
 
   def openstream
