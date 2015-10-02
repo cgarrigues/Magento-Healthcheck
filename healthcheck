@@ -124,6 +124,18 @@ class Scannable
       return line
     end
   end
+  
+  def scan
+    self.saved = {}
+    header label
+    openstream do |s|
+      while (line = s.gets)
+        if (line = scanline line.chop)
+          puts line
+        end
+      end
+    end
+  end
 end
 
 class ShellCommand < Scannable
@@ -133,15 +145,13 @@ class ShellCommand < Scannable
     @command = command
   end
 
-  def scan
-    self.saved = {}
-    header cmd
-    open("|#{cmd} 2>&1") do |s|
-      while (line = s.gets)
-        if (line = scanline line.chop)
-          puts line
-        end
-      end
+  def label
+    cmd
+  end
+  
+  def openstream
+    open "|#{cmd} 2>&1" do |s|
+      yield s
     end
   end
 end
@@ -159,17 +169,15 @@ class Cache < ShellCommand
     "quit"
   end
 
-  def scan
-    self.saved = {}
-    header "#{hostname}:#{port}"
+  def label
+    "#{hostname}:#{port}"
+  end
+
+  def openstream
     TCPSocket.open(hostname, port) do |s|
       s.puts statcmd + "\r"
       s.puts quitcmd + "\r"
-      while (line = s.gets)
-        if (line = scanline line.chop)
-          puts line
-        end
-      end
+      yield s
     end
   end
 end
@@ -386,15 +394,13 @@ class MysqlCommand < ShellCommand
     @dbname = dbname
   end
   
-  def scan
-    self.saved = {}
-    header cmd
+  def label
+    cmd
+  end
+  
+  def openstream
     open("|mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}' 2>&1") do |s|
-      while (line = s.gets)
-        if (line = scanline line.chop)
-          puts line
-        end
-      end
+      yield s
     end
   end
 end
@@ -479,15 +485,13 @@ class ConfFile < Scannable
     @filename = filename
   end
 
-  def scan
-    self.saved = {}
-    header filename
+  def label
+    filename
+  end
+
+  def openstream
     open(filename) do |s|
-      while (line = s.gets)
-        if (line = scanline line.chop)
-          puts line
-        end
-      end
+      yield s
     end
   end
 end
