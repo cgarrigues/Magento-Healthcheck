@@ -360,8 +360,8 @@ class MysqlStatus < MysqlCommand
 
   def matches
     {
-      /Aborted_clients\s(\S+)/ => [["<", 100]],
-      /Aborted_connects\s(\S+)/ => [["<", 100]],
+      /Aborted_clients\s(\S+)/ => [["<", 1000]],
+      /Aborted_connects\s(\S+)/ => [["<", 1000]],
       /Table_locks_waited\s(\S+)/ => [["<", 100]],
       /(Access denied.*)/ => [[:flag, "Password issue?"]],
     }
