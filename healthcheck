@@ -64,6 +64,8 @@ class Scannable
         return ((Integer data) >= value)
       elsif test == "<="
         return ((Integer data) <= value)
+      elsif test == "ne"
+        return (data != value)
       elsif test == :okay
         return true
       elsif test == :alsocheck
@@ -288,7 +290,19 @@ class HttpdM < ScannableCmd
 
   def matches
     {
-      /(php5_module)/ => [[:alsocheck, Php]],
+      /(php5_module)/ => [[:alsocheck, Php]]
+    }
+  end
+end
+
+class PhpV < ScannableCmd
+  def cmd
+    "php -v"
+  end
+
+  def matches
+    {
+      /PHP (\d+\.\d+)/ => [["ne", "5.7"]],
     }
   end
 end
@@ -323,7 +337,7 @@ end
 class Php < Collection
   def initialize(*args)
     super
-    @children = []
+    @children = [PhpV]
   end
 end
 
