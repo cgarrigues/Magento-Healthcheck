@@ -288,7 +288,7 @@ class HttpdM < ScannableCmd
 
   def matches
     {
-      /(php5_module)/ => [[:okay]],
+      /(php5_module)/ => [[:alsocheck, Php]],
     }
   end
 end
@@ -314,6 +314,13 @@ class Collection
 end
 
 class Nginx < Collection
+  def initialize(*args)
+    super
+    @children = []
+  end
+end
+
+class Php < Collection
   def initialize(*args)
     super
     @children = []
@@ -449,7 +456,7 @@ end
 class RedisConf < ConfFile
   def matches
     {
-      /(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
+      /^\s*(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
     }
   end
 end
