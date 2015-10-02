@@ -219,6 +219,61 @@ class Sysctl < ShellCommand
   end
 end
 
+class Netstat < ShellCommand
+  def cmd
+    "netstat -nap"
+  end
+
+  def matches
+    {
+    }
+  end
+end
+
+class Iostat < ShellCommand
+  def cmd
+    "iostat -dx"
+  end
+
+  def matches
+    {
+    }
+  end
+end
+
+class Dmesg < ShellCommand
+  def cmd
+    "dmesg"
+  end
+
+  def matches
+    {
+    }
+  end
+end
+
+class Free < ShellCommand
+  def cmd
+    "free -mo"
+  end
+
+  def matches
+    {
+    }
+  end
+end
+
+class Uptime < ShellCommand
+  def cmd
+    "uptime"
+  end
+
+  def matches
+    {
+    }
+  end
+end
+
 class Ps < ShellCommand
   def cmd
     'ps aux'
@@ -604,7 +659,7 @@ class MagentoXmlFile < XmlFile
   end
 end
 
-$checks = [Ps, Sysctl]
+$checks = [Ps, Sysctl, Netstat, Iostat, Dmesg, Free, Uptime]
 
 while check = $checks.shift do
   if check.is_a? Array
