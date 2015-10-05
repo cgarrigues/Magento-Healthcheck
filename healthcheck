@@ -437,10 +437,11 @@ class DocRoot < DocumentRoot
     rootpath
   end
   
-  def scanroot(etcpath)
+  def scanroot(rootpath)
+    etcpath = rootpath + 'app/etc'
     ["local.xml", "enterprise.xml"].each do |xmlfile|
       if (etcpath + xmlfile).exist?
-        $checks.unshift [MagentoXmlFile, xmlfile]
+        $checks.unshift [MagentoXmlFile, etcpath + xmlfile]
       end
     end
   end
