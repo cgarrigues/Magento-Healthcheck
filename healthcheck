@@ -250,19 +250,58 @@ class Netstat < ShellCommand
 end
 
 class Iostat < ShellCommand
-  self.cmd = 'iostat -dx'
+  self.cmd = 'iostat -dx 3 6'
 end
 
 class Dmesg < ShellCommand
   self.cmd = 'dmesg'
 end
 
+class Vmstat < ShellCommand
+  self.cmd = 'vmstat 1 10'
+end
+
+class Mpmstat < ShellCommand
+  self.cmd = 'mpstat -P ALL'
+end
+
 class Free < ShellCommand
   self.cmd = 'free -mo'
 end
 
-class Uptime < ShellCommand
-  self.cmd = 'uptime'
+class Top < ShellCommand
+  self.cmd = 'top -n1'
+end
+
+class Last < ShellCommand
+  self.cmd = 'last'
+end
+
+class Ethtool < ShellCommand
+  def initialize(interface)
+    super()
+    self.class.cmd = "ethtool #{interface}"
+  end
+end
+
+class Ifconfig < ShellCommand
+  self.cmd = 'ifconfig -a'
+  self.matches = {
+    /^(\S+)\s/ => [[:alsocheck, Ethtool]],
+    /errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
+    /errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
+  }
+end
+
+class Iptables < ShellCommand
+  self.cmd = 'iptables -L -n -v'
+end
+
+class Lsmod < ShellCommand
+  self.cmd = 'lsmod'
+  self.matches = {
+    /^(ip_tables)/ => [[:alsocheck, Iptables]],
+  }
 end
 
 class Collection
@@ -460,22 +499,22 @@ class PhpV < ShellCommand
   }
 end
 
-class Php < Collection
-  def initialize(*args)
-    super
-    @children = [PhpV, PhpI]
-  end
-end
-
-class HttpdM < ShellCommand
-  def initialize(command)
-    super()
-    self.class.cmd = "#{command} -M"
-  end
-
+class PhpM < ShellCommand
+  self.cmd = 'php -m'
   self.matches = {
-    /(php5_module)/ => [[:alsocheck, Php]]
+    /^(bcmath)/ => [[:save, :bcmath]],
+    /^(memcache)/ => [[:save, :cache]],
+    /^(redis)/ => [[:save, :cache]],
   }
+
+  def process_saved
+    unless self.saved[:bcmath]
+      puts colorize(:invert) + "bcmath is a required php module" + colorize(:off)
+    end
+    unless self.saved[:cache]
+      puts colorize(:invert) + "either memcache or redis modules are required" + colorize(:off)
+    end
+  end
 end
 
 class PhpI < ShellCommand
@@ -492,6 +531,24 @@ class PhpI < ShellCommand
     /^disable_functions => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
     /^open_basedir => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
     /^safe_mode => (.+) => (.+)/ => [["eq", "Off"], ["eq", "Off"]],
+  }
+end
+
+class Php < Collection
+  def initialize(*args)
+    super
+    @children = [PhpV, PhpM, PhpI]
+  end
+end
+
+class HttpdM < ShellCommand
+  def initialize(command)
+    super()
+    self.class.cmd = "#{command} -M"
+  end
+
+  self.matches = {
+    /(php5_module)/ => [[:alsocheck, Php]]
   }
 end
 
@@ -624,7 +681,7 @@ class MagentoXmlFile < XmlFile
   end
 end
 
-$checks = [UnameA, DfHit, Ps, Sysctl, Netstat, Iostat, Dmesg, Free, Uptime]
+$checks = [UnameA, Ifconfig, DfHit, Ps, Sysctl, Netstat, Iostat, Vmstat, Dmesg, Lsmod, Free, Top, Last]
 
 while check = $checks.shift do
   if check.is_a? Array
@@ -634,6 +691,9 @@ while check = $checks.shift do
     item = check.new
   end
   item.scan
+  if item.respond_to? :process_saved
+    item.process_saved
+  end
   if item.respond_to? :also_check
     item.also_check.reverse.each do |value|
       unless $checks.include? value
