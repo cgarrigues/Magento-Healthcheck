@@ -113,7 +113,7 @@ class Scannable
       if matchdata = (key.match line)
         match = true
         (1..tests.length).to_a.reverse.each do |i|
-          testpairs = tests[i-1]
+          testpairs = tests[i-1].dup
           endinsert = nil
           while test = testpairs.shift
             value = testpairs.shift
@@ -317,6 +317,20 @@ end
 class RedisConf < ConfFile
   self.matches = {
     /^\s*(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
+  }
+end
+
+class UnameA < ShellCommand
+  self.cmd = 'uname -a'
+  self.matches = {
+    /\s\S+\s(\S+)/ => [[:okay]]
+  }
+end
+
+class DfHit < ShellCommand
+  self.cmd = 'df -hiT'
+  self.matches = {
+    /\s(\d+)\%/ => [["<", 75]],
   }
 end
 
@@ -607,7 +621,7 @@ class MagentoXmlFile < XmlFile
   end
 end
 
-$checks = [Ps, Sysctl, Netstat, Iostat, Dmesg, Free, Uptime]
+$checks = [UnameA, DfHit, Ps, Sysctl, Netstat, Iostat, Dmesg, Free, Uptime]
 
 while check = $checks.shift do
   if check.is_a? Array
