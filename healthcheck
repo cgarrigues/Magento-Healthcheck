@@ -443,8 +443,10 @@ class DocRoot < DocumentRoot
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
       if etcpath.exist?
-        Dir.glob(etcpath + '*.xml').each do |xmlfile|
-          $checks.unshift [MagentoXmlFile, xmlfile]
+        ["local.xml", "enterprise.xml"].each do |xmlfile|
+          if (etcpath + xmlfile).exist?
+            $checks.unshift [MagentoXmlFile, xmlfile]
+          end
         end
       else
         puts colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
@@ -452,8 +454,10 @@ class DocRoot < DocumentRoot
           etcpath = rootpath + dir + "app/etc"
           if etcpath.exist?
             puts colorize(:invert) + "But #{etcpath} is." + colorize(:off)
-            Dir.glob(etcpath + '*.xml').each do |xmlfile|
-              $checks.unshift [MagentoXmlFile, xmlfile]
+            ["local.xml", "enterprise.xml"].each do |xmlfile|
+              if (etcpath + xmlfile).exist?
+                $checks.unshift [MagentoXmlFile, etcpath + xmlfile]
+              end
             end
           end
         end
