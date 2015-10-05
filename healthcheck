@@ -444,6 +444,9 @@ class DocRoot < DocumentRoot
         $checks.unshift [MagentoXmlFile, etcpath + xmlfile]
       end
     end
+    if (rootpath + 'app/Mage.php').exist?
+      $checks.unshift [MagVersion, rootpath]
+    end
   end
   
   def scan
@@ -626,6 +629,29 @@ class Mysql < Collection
   def initialize(*args)
     super
     @children = [MysqlStatus, MysqlVariables, MysqlInnodbStatus, MysqlProcessList, MysqlSlaveStatus]
+  end
+end
+
+class MagentoVersion < ShellCommand
+end
+
+class MagVersion < MagentoVersion
+  attr_reader :path
+  
+  def initialize(path)
+    @path = path
+    self.class.cmd = "php -r \"require \'#{path}/app/Mage.php\'; echo Mage::getVersion();\""
+  end
+
+  def label
+    "Magento install at #{path}"
+  end
+  
+  def scan
+    header
+    openstream do |s|
+      puts colorize(:greenfg) + s.gets + colorize(:gree)
+    end
   end
 end
 
