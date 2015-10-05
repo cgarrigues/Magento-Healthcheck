@@ -152,6 +152,9 @@ class Scannable
         end
       end
     end
+    if self.class.matches == {}
+      puts colorize(:invert) + 'No match rules defined yet' + colorize(:off)
+    end
   end
 end
 
