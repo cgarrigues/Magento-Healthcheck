@@ -47,13 +47,15 @@ class Scannable
 
   @@matches = Hash.new { |hash, key| hash[key] = Hash.new }
   
-  def matches
-    @@matches[self.class]
-  end
-
-  def matches= (newmatches)
-    newmatches.each do |key, value|
-      @@matches[self.class][key] = value
+  class << self
+    def matches
+      @@matches[self]
+    end
+    
+    def matches= (newmatches)
+      newmatches.each do |key, value|
+        @@matches[self][key] = value
+      end
     end
   end
   
@@ -104,7 +106,7 @@ class Scannable
   
   def scanline(line)
     match = false
-    matches.each do |key, tests|
+    self.class.matches.each do |key, tests|
       if matchdata = (key.match line)
         match = true
         (1..tests.length).to_a.reverse.each do |i|
@@ -199,12 +201,9 @@ class Memcached < Cache
     "stats"
   end
 
-  def initialize(*args)
-    super
-    self.matches = {
-      /STAT evictions (\d+)/ => [["=", 0]],
-    }
-  end
+  self.matches = {
+    /STAT evictions (\d+)/ => [["=", 0]],
+  }
 end
 
 class Redis < Cache
@@ -212,12 +211,15 @@ class Redis < Cache
     "info"
   end
 
+  self.matches = {
+    /evicted_keys:(\d+)/ => [["=", 0]],
+    /connected_clients:(\d+)/ => [[">", 0]],
+  }
+  
   def initialize(*args)
     super
-    @@matches[Sysctl][/vm.overcommit_memory = (\d+)/] = [["=", 1]]
-    self.matches = {
-      /evicted_keys:(\d+)/ => [["=", 0]],
-      /connected_clients:(\d+)/ => [[">", 0]],
+    Sysctl.matches = {
+      /vm.overcommit_memory = (\d+)/ => [["=", 1]],
     }
   end
 end
@@ -227,14 +229,11 @@ class Sysctl < ShellCommand
     "sysctl -a"
   end
 
-  def initialize(*args)
-    super
-    self.matches = {
-      /net.ipv4.tcp_tw_recycle = (\d+)/ => [["=", 1]],
-      /net.ipv4.tcp_tw_reuse = (\d+)/ => [["=", 1]],
-      /net.ipv4.tcp_fin_timeout = (\d+)/ => [["=", 10]],
-    }
-  end
+  self.matches = {
+    /net.ipv4.tcp_tw_recycle = (\d+)/ => [["=", 1]],
+    /net.ipv4.tcp_tw_reuse = (\d+)/ => [["=", 1]],
+    /net.ipv4.tcp_fin_timeout = (\d+)/ => [["=", 10]],
+  }
 end
 
 class Netstat < ShellCommand
@@ -267,127 +266,6 @@ class Uptime < ShellCommand
   end
 end
 
-class Ps < ShellCommand
-  def cmd
-    'ps aux'
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
-      /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
-      /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
-      /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
-      /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf]],
-    }
-  end
-  
-end
-
-class Httpdt < ShellCommand
-  def cmd
-    "#{command} -t"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /(.*warn.*)/ => [[:flag, "!!!! WARNING !!!!"]],
-      /(.*error.*)/ => [[:flag, "!!!!!! ERROR !!!!!!"]],
-      /(Syntax OK)/ => [[:okay]],
-    }
-  end
-end
-
-class HttpdV < ShellCommand
-  def cmd
-    "#{command} -V"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /Server MPM:\s+(\S+)/ => [[:okay]],
-      /^ -D HTTPD_ROOT="(\S+)"/ => [[:save, :httpdroot]],
-      /^ -D SERVER_CONFIG_FILE="(\S+)"/ => [[:save, :serverconfigfile]],
-    }
-  end
-
-  def also_check
-    if saved[:httpdroot] && saved[:serverconfigfile]
-      configfile = saved[:httpdroot] + "/" + saved[:serverconfigfile]
-      puts colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
-      [[ApacheFile, configfile]]
-    else
-      []
-    end
-  end
-end
-
-class HttpdS < ShellCommand
-  def cmd
-    "#{@command} -S"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /default server (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
-      /namevhost (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
-    }
-  end
-end
-
-class HttpdM < ShellCommand
-  def cmd
-    "#{command} -M"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /(php5_module)/ => [[:alsocheck, Php]]
-    }
-  end
-end
-
-class PhpV < ShellCommand
-  def cmd
-    "php -v"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /PHP (\d+\.\d+)/ => [["ne", "5.7"]],
-    }
-  end
-end
-
-class PhpI < ShellCommand
-  def cmd
-    "php -i"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /^session.gc_maxlifetime => (\d+) => (\d+)/ => [["=", 1440], ["=", 1440]],
-      /^session.gc_probability => (\d+) => (\d+)/ => [["=", 1], ["=", 1]],
-      /^session.cookie_lifetime => (\d+) => (\d+)/ => [["=", 0], ["=", 0]],
-      /^memory_limit => (\d+)M => (\d+)M/ => [[">=", 256], [">=", 256]],
-      /^max_execution_time => (\d+) => (\d+)/ => [["=", 18000], ["=", 18000]],
-      /^max_input_vars => (\d+) => (\d+)/ => [[">=", 2000], [">=", 2000]],
-      /^auto_prepend_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-      /^auto_append_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-      /^disable_functions => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-      /^open_basedir => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-      /^safe_mode => (.+) => (.+)/ => [["eq", "Off"], ["eq", "Off"]],
-    }
-  end
-end
-
 class Collection
   attr_reader :args
   attr_accessor :children
@@ -408,20 +286,6 @@ class Collection
   end
 end
 
-class Nginx < Collection
-  def initialize(*args)
-    super
-    @children = []
-  end
-end
-
-class Php < Collection
-  def initialize(*args)
-    super
-    @children = [PhpV, PhpI]
-  end
-end
-
 class Apache < Collection
   def initialize(*args)
     super
@@ -429,105 +293,10 @@ class Apache < Collection
   end
 end
 
-class MysqlCommand < ShellCommand
-  attr_reader :hostname
-  attr_reader :username
-  attr_reader :password
-  attr_reader :dbname
-
-  def initialize(hostname, username, password, dbname)
-    @hostname = hostname
-    @username = username
-    @password = password
-    @dbname = dbname
-  end
-  
-  def label
-    cmd
-  end
-  
-  def openstream
-    open("|mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}' 2>&1") do |s|
-      yield s
-    end
-  end
-end
-
-class MysqlStatus < MysqlCommand
-  def cmd
-    "show global status"
-  end
-
+class Nginx < Collection
   def initialize(*args)
     super
-    self.matches = {
-      /Aborted_clients\s(\S+)/ => [["<", 1000]],
-      /Aborted_connects\s(\S+)/ => [["<", 1000]],
-      /Table_locks_waited\s(\S+)/ => [["<", 100]],
-      /(Access denied.*)/ => [[:flag, "Password issue?"]],
-    }
-  end
-end
-
-class MysqlVariables < MysqlCommand
-  def cmd
-    "show global variables"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
-      /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024, :save, :heap_table_size]],
-      /tmp_table_size\s(\S+)/ => [[">", 128*1024*1024, "=", :heap_table_size]],
-      /(Access denied.*)/ => [[:flag, "Password issue?"]],
-    }
-  end
-end
-
-class MysqlInnodbStatus < MysqlCommand
-  def cmd
-    "show engine innodb status\\G"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /(Access denied.*)/ => [[:flag, "Password issue?"]],
-    }
-  end
-end
-
-class MysqlProcessList < MysqlCommand
-  def cmd
-    "show processlist"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /(Access denied.*)/ => [[:flag, "Password issue?"]],
-    }
-  end
-end
-
-class MysqlSlaveStatus < MysqlCommand
-  def cmd
-    "show slave status"
-  end
-
-  def initialize(*args)
-    super
-    self.matches = {
-      /(Access denied.*)/ => [[:flag, "Password issue?"]],
-    }
-  end
-end
-
-class Mysql < Collection
-  def initialize(*args)
-    super
-    @children = [MysqlStatus, MysqlVariables, MysqlInnodbStatus, MysqlProcessList, MysqlSlaveStatus]
+    @children = []
   end
 end
 
@@ -550,30 +319,57 @@ class ConfFile < Scannable
 end
 
 class RedisConf < ConfFile
-  def initialize(*args)
-    super
-    self.matches = {
-      /^\s*(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
-    }
-  end
+  self.matches = {
+    /^\s*(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
+  }
 end
 
-class ApacheFile < ConfFile
-  def cleanup(value)
-    if /^"(.*)"$/ =~ value
-      value = $1
-    end
-    if /^(.*)\/$/ =~ value
-      value = $1
-    end
-    return value
+class Ps < ShellCommand
+  def cmd
+    'ps aux'
   end
 
-  def initialize(value)
-    super
-    self.matches = {
-      /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocRoot]],
-    }
+  self.matches = {
+    /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
+    /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
+    /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
+    /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
+    /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf]],
+  }
+  
+end
+
+class Httpdt < ShellCommand
+  def cmd
+    "#{command} -t"
+  end
+
+  self.matches = {
+    /(.*warn.*)/ => [[:flag, "!!!! WARNING !!!!"]],
+    /(.*error.*)/ => [[:flag, "!!!!!! ERROR !!!!!!"]],
+    /(Syntax OK)/ => [[:okay]],
+  }
+end
+
+class HttpdV < ShellCommand
+  def cmd
+    "#{command} -V"
+  end
+
+  self.matches = {
+    /Server MPM:\s+(\S+)/ => [[:okay]],
+    /^ -D HTTPD_ROOT="(\S+)"/ => [[:save, :httpdroot]],
+    /^ -D SERVER_CONFIG_FILE="(\S+)"/ => [[:save, :serverconfigfile]],
+  }
+
+  def also_check
+    if saved[:httpdroot] && saved[:serverconfigfile]
+      configfile = saved[:httpdroot] + "/" + saved[:serverconfigfile]
+      puts colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
+      [[ApacheFile, configfile]]
+    else
+      []
+    end
   end
 end
 
@@ -615,6 +411,167 @@ class DocRoot < DocumentRoot
     else
       puts colorize(:redbg) + rootpath + " does not exist" + colorize(:off)
     end
+  end
+end
+
+class ApacheFile < ConfFile
+  def cleanup(value)
+    if /^"(.*)"$/ =~ value
+      value = $1
+    end
+    if /^(.*)\/$/ =~ value
+      value = $1
+    end
+    return value
+  end
+
+  self.matches = {
+    /^\s*DocumentRoot\s+(\S+)/ => [[:alsocheck, DocRoot]],
+  }
+end
+
+class HttpdS < ShellCommand
+  def cmd
+    "#{@command} -S"
+  end
+
+  self.matches = {
+    /default server (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
+    /namevhost (\S+)\s+\(([^:]+):/ => [[:okay], [:alsocheck, ApacheFile]],
+  }
+end
+
+class PhpV < ShellCommand
+  def cmd
+    "php -v"
+  end
+
+  self.matches = {
+    /PHP (\d+\.\d+)/ => [["ne", "5.7"]],
+  }
+end
+
+class Php < Collection
+  def initialize(*args)
+    super
+    @children = [PhpV, PhpI]
+  end
+end
+
+class HttpdM < ShellCommand
+  def cmd
+    "#{command} -M"
+  end
+
+  self.matches = {
+    /(php5_module)/ => [[:alsocheck, Php]]
+  }
+end
+
+class PhpI < ShellCommand
+  def cmd
+    "php -i"
+  end
+
+  self.matches = {
+    /^session.gc_maxlifetime => (\d+) => (\d+)/ => [["=", 1440], ["=", 1440]],
+    /^session.gc_probability => (\d+) => (\d+)/ => [["=", 1], ["=", 1]],
+    /^session.cookie_lifetime => (\d+) => (\d+)/ => [["=", 0], ["=", 0]],
+    /^memory_limit => (\d+)M => (\d+)M/ => [[">=", 256], [">=", 256]],
+    /^max_execution_time => (\d+) => (\d+)/ => [["=", 18000], ["=", 18000]],
+    /^max_input_vars => (\d+) => (\d+)/ => [[">=", 2000], [">=", 2000]],
+    /^auto_prepend_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+    /^auto_append_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+    /^disable_functions => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+    /^open_basedir => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
+    /^safe_mode => (.+) => (.+)/ => [["eq", "Off"], ["eq", "Off"]],
+  }
+end
+
+class MysqlCommand < ShellCommand
+  attr_reader :hostname
+  attr_reader :username
+  attr_reader :password
+  attr_reader :dbname
+
+  def initialize(hostname, username, password, dbname)
+    @hostname = hostname
+    @username = username
+    @password = password
+    @dbname = dbname
+  end
+  
+  def label
+    cmd
+  end
+  
+  def openstream
+    open("|mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}' 2>&1") do |s|
+      yield s
+    end
+  end
+end
+
+class MysqlStatus < MysqlCommand
+  def cmd
+    "show global status"
+  end
+
+  self.matches = {
+    /Aborted_clients\s(\S+)/ => [["<", 1000]],
+    /Aborted_connects\s(\S+)/ => [["<", 1000]],
+    /Table_locks_waited\s(\S+)/ => [["<", 100]],
+    /(Access denied.*)/ => [[:flag, "Password issue?"]],
+  }
+end
+
+class MysqlVariables < MysqlCommand
+  def cmd
+    "show global variables"
+  end
+
+  self.matches = {
+    /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
+    /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024, :save, :heap_table_size]],
+    /tmp_table_size\s(\S+)/ => [[">", 128*1024*1024, "=", :heap_table_size]],
+    /(Access denied.*)/ => [[:flag, "Password issue?"]],
+  }
+end
+
+class MysqlInnodbStatus < MysqlCommand
+  def cmd
+    "show engine innodb status\\G"
+  end
+
+  self.matches = {
+    /(Access denied.*)/ => [[:flag, "Password issue?"]],
+  }
+end
+
+class MysqlProcessList < MysqlCommand
+  def cmd
+    "show processlist"
+  end
+
+  self.matches = {
+    /(Access denied.*)/ => [[:flag, "Password issue?"]],
+  }
+end
+
+class MysqlSlaveStatus < MysqlCommand
+  def cmd
+    "show slave status"
+  end
+
+  self.matches = {
+    /(Access denied.*)/ => [[:flag, "Password issue?"]],
+  }
+end
+
+class Mysql < Collection
+  def initialize(*args)
+    super
+    @children = [MysqlStatus, MysqlVariables, MysqlInnodbStatus, MysqlProcessList, MysqlSlaveStatus]
   end
 end
 
