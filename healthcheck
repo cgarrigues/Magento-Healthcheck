@@ -59,6 +59,9 @@ class Scannable
     end
   end
   
+  def initialize(*args)
+  end
+  
   def header
     puts
     puts "#{colorize(:underline)}#{self.class.superclass}: #{colorize(:bright)}#{label}#{colorize(:off)}"
@@ -155,10 +158,22 @@ end
 class ShellCommand < Scannable
   attr_reader :command
   
-  def initialize(command = '')
-    @command = command
+  @@cmd = Hash.new
+
+  class << self
+    def cmd
+      @@cmd[self]
+    end
+
+    def cmd= (cmd)
+      @@cmd[self] = cmd
+    end
   end
 
+  def cmd
+    @@cmd[self.class]
+  end
+  
   def label
     cmd
   end
@@ -197,20 +212,14 @@ class Cache < ShellCommand
 end
 
 class Memcached < Cache
-  def cmd
-    "stats"
-  end
-
+  self.cmd = "stats"
   self.matches = {
     /STAT evictions (\d+)/ => [["=", 0]],
   }
 end
 
 class Redis < Cache
-  def cmd
-    "info"
-  end
-
+  self.cmd = 'info'
   self.matches = {
     /evicted_keys:(\d+)/ => [["=", 0]],
     /connected_clients:(\d+)/ => [[">", 0]],
@@ -225,10 +234,7 @@ class Redis < Cache
 end
 
 class Sysctl < ShellCommand
-  def cmd
-    "sysctl -a"
-  end
-
+  self.cmd = 'sysctl -a'
   self.matches = {
     /net.ipv4.tcp_tw_recycle = (\d+)/ => [["=", 1]],
     /net.ipv4.tcp_tw_reuse = (\d+)/ => [["=", 1]],
@@ -237,33 +243,23 @@ class Sysctl < ShellCommand
 end
 
 class Netstat < ShellCommand
-  def cmd
-    "netstat -nap"
-  end
+  self.cmd = 'netstat -nap'
 end
 
 class Iostat < ShellCommand
-  def cmd
-    "iostat -dx"
-  end
+  self.cmd = 'iostat -dx'
 end
 
 class Dmesg < ShellCommand
-  def cmd
-    "dmesg"
-  end
+  self.cmd = 'dmesg'
 end
 
 class Free < ShellCommand
-  def cmd
-    "free -mo"
-  end
+  self.cmd = 'free -mo'
 end
 
 class Uptime < ShellCommand
-  def cmd
-    "uptime"
-  end
+  self.cmd = 'uptime'
 end
 
 class Collection
@@ -325,10 +321,7 @@ class RedisConf < ConfFile
 end
 
 class Ps < ShellCommand
-  def cmd
-    'ps aux'
-  end
-
+  self.cmd = 'ps aux'
   self.matches = {
     /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
     /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
@@ -340,8 +333,9 @@ class Ps < ShellCommand
 end
 
 class Httpdt < ShellCommand
-  def cmd
-    "#{command} -t"
+  def initialize(command)
+    super()
+    self.class.cmd = "#{command} -t"
   end
 
   self.matches = {
@@ -352,8 +346,8 @@ class Httpdt < ShellCommand
 end
 
 class HttpdV < ShellCommand
-  def cmd
-    "#{command} -V"
+  def initialize(command)
+    self.class.cmd = "#{command} -V"
   end
 
   self.matches = {
@@ -431,8 +425,9 @@ class ApacheFile < ConfFile
 end
 
 class HttpdS < ShellCommand
-  def cmd
-    "#{@command} -S"
+  def initialize(command)
+    super()
+    self.class.cmd = "#{command} -S"
   end
 
   self.matches = {
@@ -442,10 +437,7 @@ class HttpdS < ShellCommand
 end
 
 class PhpV < ShellCommand
-  def cmd
-    "php -v"
-  end
-
+  self.cmd = 'php -v'
   self.matches = {
     /PHP (\d+\.\d+)/ => [["ne", "5.7"]],
   }
@@ -459,8 +451,9 @@ class Php < Collection
 end
 
 class HttpdM < ShellCommand
-  def cmd
-    "#{command} -M"
+  def initialize(command)
+    super()
+    self.class.cmd = "#{command} -M"
   end
 
   self.matches = {
@@ -469,10 +462,7 @@ class HttpdM < ShellCommand
 end
 
 class PhpI < ShellCommand
-  def cmd
-    "php -i"
-  end
-
+  self.cmd = 'php -i'
   self.matches = {
     /^session.gc_maxlifetime => (\d+) => (\d+)/ => [["=", 1440], ["=", 1440]],
     /^session.gc_probability => (\d+) => (\d+)/ => [["=", 1], ["=", 1]],
@@ -513,10 +503,7 @@ class MysqlCommand < ShellCommand
 end
 
 class MysqlStatus < MysqlCommand
-  def cmd
-    "show global status"
-  end
-
+  self.cmd = 'show global status'
   self.matches = {
     /Aborted_clients\s(\S+)/ => [["<", 1000]],
     /Aborted_connects\s(\S+)/ => [["<", 1000]],
@@ -526,10 +513,7 @@ class MysqlStatus < MysqlCommand
 end
 
 class MysqlVariables < MysqlCommand
-  def cmd
-    "show global variables"
-  end
-
+  self.cmd = 'show global variables'
   self.matches = {
     /innodb_log_file_size\s(\S+)/ => [[">", 128*1024*1024]],
     /max_heap_table_size\s(\S+)/ => [[">", 128*1024*1024, :save, :heap_table_size]],
@@ -539,30 +523,21 @@ class MysqlVariables < MysqlCommand
 end
 
 class MysqlInnodbStatus < MysqlCommand
-  def cmd
-    "show engine innodb status\\G"
-  end
-
+  self.cmd = 'show engine innodb status\\G'
   self.matches = {
     /(Access denied.*)/ => [[:flag, "Password issue?"]],
   }
 end
 
 class MysqlProcessList < MysqlCommand
-  def cmd
-    "show processlist"
-  end
-
+  self.cmd = 'show processlist'
   self.matches = {
     /(Access denied.*)/ => [[:flag, "Password issue?"]],
   }
 end
 
 class MysqlSlaveStatus < MysqlCommand
-  def cmd
-    "show slave status"
-  end
-
+  self.cmd = 'show slave status'
   self.matches = {
     /(Access denied.*)/ => [[:flag, "Password issue?"]],
   }
