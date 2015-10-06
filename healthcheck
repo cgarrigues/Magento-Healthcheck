@@ -110,7 +110,13 @@ class Scannable
   def scanline(line)
     match = false
     self.class.matches.each do |key, tests|
-      if matchdata = (key.match line)
+      if key.is_a? Array
+        (field, value, key) = key
+        unless (self.saved[field] == value)
+          key = nil
+        end
+      end
+      if key and (matchdata = (key.match line))
         match = true
         (1..tests.length).to_a.reverse.each do |i|
           testpairs = tests[i-1].dup
@@ -528,17 +534,19 @@ end
 class PhpI < ShellCommand
   self.cmd = 'php -i'
   self.matches = {
-    /^session.gc_maxlifetime => (\d+) => (\d+)/ => [["=", 1440], ["=", 1440]],
-    /^session.gc_probability => (\d+) => (\d+)/ => [["=", 1], ["=", 1]],
-    /^session.cookie_lifetime => (\d+) => (\d+)/ => [["=", 0], ["=", 0]],
-    /^memory_limit => (\d+)M => (\d+)M/ => [[">=", 256], [">=", 256]],
-    /^max_execution_time => (\d+) => (\d+)/ => [["=", 18000], ["=", 18000]],
-    /^max_input_vars => (\d+) => (\d+)/ => [[">=", 2000], [">=", 2000]],
-    /^auto_prepend_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-    /^auto_append_file => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-    /^disable_functions => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-    /^open_basedir => (.+) => (.+)/ => [["eq", "no value"], ["eq", "no value"]],
-    /^safe_mode => (.+) => (.+)/ => [["eq", "Off"], ["eq", "Off"]],
+    /^([a-z]+)$/i => [[:save, :section]],
+    [:section, "session",  /^session.gc_maxlifetime => (\d+) => (\d+)/]  => [["=", 1440], ["=", 1440]],
+    [:section, "session",  /^session.gc_probability => (\d+) => (\d+)/]  => [["=", 1], ["=", 1]],
+    [:section, "session",  /^session.cookie_lifetime => (\d+) => (\d+)/] => [["=", 0], ["=", 0]],
+    [:section, "Core",     /^memory_limit => (\d+)M => (\d+)M/]          => [[">=", 256], [">=", 256]],
+    [:section, "Core",     /^max_execution_time => (\d+) => (\d+)/]      => [["=", 18000], ["=", 18000]],
+    [:section, "Core",     /^max_input_vars => (\d+) => (\d+)/]          => [[">=", 2000], [">=", 2000]],
+    [:section, "Core",     /^auto_prepend_file => (.+) => (.+)/]         => [["eq", "no value"], ["eq", "no value"]],
+    [:section, "Core",     /^auto_append_file => (.+) => (.+)/]          => [["eq", "no value"], ["eq", "no value"]],
+    [:section, "Core",     /^disable_functions => (.+) => (.+)/]         => [["eq", "no value"], ["eq", "no value"]],
+    [:section, "Core",     /^open_basedir => (.+) => (.+)/]              => [["eq", "no value"], ["eq", "no value"]],
+    [:section, "Core",     /^safe_mode => (.+) => (.+)/]                 => [["eq", "Off"], ["eq", "Off"]],
+    [:section, "memcache", /^Version => ([0-9\.]+)/]                     => [["eq", "3.0.5"]],
   }
 end
 
