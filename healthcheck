@@ -548,9 +548,9 @@ end
 class PhpM < ShellCommand
   self.cmd = 'php -m'
   self.matches = {
-    /^(bcmath)/ => [[:save, :bcmath]],
-    /^(memcache)/ => [[:save, :cache]],
-    /^(redis)/ => [[:save, :cache]],
+    /^(bcmath)$/ => [[:save, :bcmath]],
+    /^(memcache)$/ => [[:save, :cache]],
+    /^(redis)$/ => [[:save, :cache]],
   }
 
   def process_saved
