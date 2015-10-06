@@ -259,8 +259,38 @@ class Iostat < ShellCommand
   self.cmd = 'iostat -dx 3 6'
 end
 
+class ConfFile < Scannable
+  attr_reader :filename
+  
+  def initialize(filename)
+    @filename = filename
+  end
+
+  def label
+    filename
+  end
+
+  def openstream
+    open(filename) do |s|
+      yield s
+    end
+  end
+end
+
+class Selinux < ConfFile
+  def filename
+    "/etc/selinux/config"
+  end
+  self.matches = {
+    /^SELINUX=(\w+)/ => [["ne", "enforcing"]],
+  }
+end
+
 class Dmesg < ShellCommand
   self.cmd = 'dmesg'
+  self.matches = {
+    /^(SELinux):  Initializing.$/ => [[:alsocheck, Selinux]],
+  }
 end
 
 class Vmstat < ShellCommand
@@ -341,24 +371,6 @@ class Nginx < Collection
   def initialize(*args)
     super
     @children = []
-  end
-end
-
-class ConfFile < Scannable
-  attr_reader :filename
-  
-  def initialize(filename)
-    @filename = filename
-  end
-
-  def label
-    filename
-  end
-
-  def openstream
-    open(filename) do |s|
-      yield s
-    end
   end
 end
 
