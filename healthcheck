@@ -8,6 +8,7 @@ require 'pathname'
 $options = Hash.new
 OptionParser.new do |opt|
   opt.on('-v', '--verbose', 'Show all output of commands') { |o| $options[:verbose] = o}
+  opt.on('-q', '--quiet', "Don't show output of unimportant stuff") { |o| $options[:quiet] = o}
 end.parse!
 
 Effects = {
@@ -71,7 +72,7 @@ class Scannable
     data = cleanup(data)
     if test == :save
       saved[value] = data
-      return true
+      return :note
     else
       if value.class == Symbol
         value = Integer saved[value]
@@ -96,7 +97,7 @@ class Scannable
         unless $checks.include? [value, data]
           $checks.unshift [value, data]
         end
-        return true
+        return :note
       else
         return false
       end
@@ -109,6 +110,7 @@ class Scannable
   
   def scanline(line)
     match = false
+    showline = false
     self.class.matches.each do |key, tests|
       if key.is_a? Array
         (field, value, key) = key
@@ -121,12 +123,19 @@ class Scannable
         (1..tests.length).to_a.reverse.each do |i|
           testpairs = tests[i-1].dup
           endinsert = nil
+          state = nil
           while test = testpairs.shift
             value = testpairs.shift
-            if okay(matchdata[i], test, value)
-              unless endinsert
+            setstate = okay(matchdata[i], test, value)
+            if setstate == :note
+              unless state
                 endinsert = colorize(:off) + colorize(:bright)
-                begininsert = colorize(:greenfg)
+                state = :note
+              end
+            elsif setstate
+              unless state == :bad
+                endinsert = colorize(:off) + colorize(:bright)
+                state ||= :good
               end
             else
               if test == :flag
@@ -134,8 +143,17 @@ class Scannable
               else
                 endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
               end
-              begininsert = colorize(:redbg)
+              state = :bad
             end
+          end
+          if state == :bad
+            begininsert = colorize(:redbg)
+            showline = true
+          elsif state == :good
+            begininsert = colorize(:greenfg)
+            showline = true
+          else
+            begininsert = colorize(:yellowfg)
           end
           line.insert(matchdata.end(i), endinsert)
           line.insert(matchdata.begin(i), begininsert)
@@ -143,8 +161,10 @@ class Scannable
         line = (colorize(:bright) + line + colorize(:off))
       end
     end
-    if match or $options[:verbose]
-      return line
+    if (match or $options[:verbose])
+      unless $options[:quiet] and not showline
+        return line
+      end
     end
   end
   
