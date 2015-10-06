@@ -476,9 +476,6 @@ class MagExceptionLog < LogFile
   }
 end
 
-class MagDebugLog < LogFile
-end
-
 class DocumentRoot < Scannable
 end
   
@@ -505,9 +502,6 @@ class DocRoot < DocumentRoot
     end
     if (logpath = rootpath + 'var/log/exception.log').exist?
       alsoscan [MagExceptionLog, logpath]
-    end
-    if (logpath = rootpath + 'var/log/debug.log').exist?
-      alsoscan [MagDebugLog, logpath]
     end
   end
   
