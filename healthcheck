@@ -137,7 +137,11 @@ class Scannable
               end
             else
               if test == :flag
-                endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+                if value
+                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+                else
+                  endinsert = colorize(:off) + colorize(:bright)
+                end
               else
                 endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
               end
@@ -277,7 +281,7 @@ class Iostat < ShellCommand
   self.cmd = 'iostat -dx 3 6'
 end
 
-class ConfFile < Scannable
+class ScannableFile < Scannable
   attr_reader :filename
   
   def initialize(filename)
@@ -293,6 +297,9 @@ class ConfFile < Scannable
       yield s
     end
   end
+end
+
+class ConfFile < ScannableFile
 end
 
 class Selinux < ConfFile
@@ -459,6 +466,19 @@ class HttpdV < ShellCommand
   end
 end
 
+class LogFile < ScannableFile
+end
+
+class MagExceptionLog < LogFile
+  self.matches = {
+    /exception\s'([^']*)' with message '([^']*)'/ => [[:flag], [:flag]],
+    /app\/code\/local\/([^\/]+)/ => [[:flag, "not Magento code"]],
+  }
+end
+
+class MagDebugLog < LogFile
+end
+
 class DocumentRoot < Scannable
 end
   
@@ -482,6 +502,12 @@ class DocRoot < DocumentRoot
     end
     if (rootpath + 'app/Mage.php').exist?
       alsoscan [MagVersion, rootpath]
+    end
+    if (logpath = rootpath + 'var/log/exception.log').exist?
+      alsoscan [MagExceptionLog, logpath]
+    end
+    if (logpath = rootpath + 'var/log/debug.log').exist?
+      alsoscan [MagDebugLog, logpath]
     end
   end
   
