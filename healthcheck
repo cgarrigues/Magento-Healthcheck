@@ -94,9 +94,7 @@ class Scannable
       elsif test == :okay
         return true
       elsif test == :alsocheck
-        unless $checks.include? [value, data]
-          $checks.unshift [value, data]
-        end
+        alsoscan [value, data]
         return :note
       else
         return false
@@ -479,11 +477,11 @@ class DocRoot < DocumentRoot
     etcpath = rootpath + 'app/etc'
     ["local.xml", "enterprise.xml"].each do |xmlfile|
       if (etcpath + xmlfile).exist?
-        $checks.unshift [MagentoXmlFile, etcpath + xmlfile]
+        alsoscan [MagentoXmlFile, etcpath + xmlfile]
       end
     end
     if (rootpath + 'app/Mage.php').exist?
-      $checks.unshift [MagVersion, rootpath]
+      alsoscan [MagVersion, rootpath]
     end
   end
   
@@ -728,13 +726,13 @@ class MagentoXmlFile < XmlFile
             port = cache.elements["memcached/servers/server/port"].text
             back = Memcached
             puts colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{hostname}:#{port}." + colorize(:off)
-            $checks.unshift [Memcached, hostname, port]
+            alsoscan [Memcached, hostname, port]
           elsif backend == "Cm_Cache_Backend_Redis"
             hostname = cache.elements["backend_options/server"].text
             port = cache.elements["backend_options/port"].text
             back = Redis
             puts colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{hostname}:#{port}." + colorize(:off)
-            $checks.unshift [Redis, hostname, port]
+            alsoscan [Redis, hostname, port]
           end
         end
       end
@@ -743,7 +741,7 @@ class MagentoXmlFile < XmlFile
       hostname = redis_session.elements["host"].text
       port = redis_session.elements["port"].text
       puts colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
-      $checks.unshift [Redis, hostname, port]
+      alsoscan [Redis, hostname, port]
     end
     if resources = doc.elements["config/global/resources"]
       connection = resources.elements["default_setup/connection"]
@@ -752,18 +750,27 @@ class MagentoXmlFile < XmlFile
       password = connection.elements["password"].text
       dbname = connection.elements["dbname"].text
       puts colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{hostname}." + colorize(:off)
-      $checks.unshift [Mysql, hostname, username, password, dbname]
+      alsoscan [Mysql, hostname, username, password, dbname]
     end
   end
 end
 
+$oldchecks = []
 $checks = [UnameA, Ifconfig, DfHit, Ps, Sysctl, Netstat, Iostat, Vmstat, Dmesg, Lsmod, Free, Top, Last]
+
+def alsoscan(item)
+  unless ($checks.include? item) or ($oldchecks.include? item)
+    $checks.unshift item
+  end
+end
 
 while check = $checks.shift do
   if check.is_a? Array
     objclass = check.shift
     item = objclass.new *check
+    $oldchecks.unshift [objclass, *check.dup]
   else
+    $oldchecks.unshift check
     item = check.new
   end
   item.scan
@@ -772,9 +779,7 @@ while check = $checks.shift do
   end
   if item.respond_to? :also_check
     item.also_check.reverse.each do |value|
-      unless $checks.include? value
-        $checks.unshift value
-      end
+      alsoscan value
     end
   end
   #puts $checks.inspect
