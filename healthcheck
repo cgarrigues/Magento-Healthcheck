@@ -493,7 +493,7 @@ class DocRoot < DocumentRoot
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
       if etcpath.exist?
-        scanroot etcpath
+        scanroot rootpath
       else
         puts colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
         Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
@@ -618,7 +618,12 @@ class MysqlCommand < ShellCommand
   end
   
   def openstream
-    open("|mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}' 2>&1") do |s|
+    if password == ''
+      cmd = "mysql -h#{hostname} -u#{username} -e'#{cmd}'"
+    else
+      cmd = "mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}'"
+    end
+    open("|#{cmd} 2>&1") do |s|
       yield s
     end
   end
