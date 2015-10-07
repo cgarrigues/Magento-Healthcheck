@@ -418,15 +418,6 @@ class Apache < Collection
   end
 end
 
-class NginxConf < ConfFile
-end
-
-class NgConf < NginxConf
-  self.matches = {
-    /^\s*include\s+(\/\S+);/ => [[:alsocheck, NgConf]],
-  }
-end
-
 class RedisConf < ConfFile
   self.matches = {
     /^\s*(maxmemory)/ => [[:flag, "Don't set maxmemory"]],
@@ -451,6 +442,68 @@ class DfHit < ShellCommand
   self.cmd = 'df -hiT'
   self.matches = {
     /\s(\d+)\%/ => [["<", 75]],
+  }
+end
+
+class DocumentRoot < Scannable
+end
+  
+class DocRoot < DocumentRoot
+  attr_reader :rootpath
+
+  def initialize(rootpath)
+    @rootpath = Pathname.new rootpath
+  end
+
+  def label
+    rootpath
+  end
+  
+  def scanroot(rootpath)
+    etcpath = rootpath + 'app/etc'
+    ["local.xml", "enterprise.xml"].each do |xmlfile|
+      if (etcpath + xmlfile).exist?
+        alsoscan [MagentoXmlFile, etcpath + xmlfile]
+      end
+    end
+    if (rootpath + 'app/Mage.php').exist?
+      alsoscan [MagVersion, rootpath]
+    end
+    if (logpath = rootpath + 'var/log/exception.log').exist?
+      alsoscan [MagExceptionLog, logpath]
+    end
+  end
+  
+  def scan
+    self.saved = Hash.new
+    header
+    if rootpath.exist?
+      etcpath = rootpath + "app/etc"
+      if etcpath.exist?
+        scanroot rootpath
+      else
+        puts colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
+        Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
+          etcpath = rootpath + dir + "app/etc"
+          if etcpath.exist?
+            puts colorize(:invert) + "But #{rootpath + dir} is." + colorize(:off)
+            scanroot rootpath + dir
+          end
+        end
+      end
+    else
+      puts colorize(:redbg) + rootpath + " does not exist" + colorize(:off)
+    end
+  end
+end
+
+class NginxConf < ConfFile
+end
+
+class NgConf < NginxConf
+  self.matches = {
+    /^\s*include\s+(\/\S+);/ => [[:alsocheck, NgConf]],
+    /^\s*set \$MAGE_ROOT\s+(\S+);/ => [[:alsocheck, DocRoot]],
   }
 end
 
@@ -509,58 +562,6 @@ class MagExceptionLog < LogFile
     /exception\s'([^']*)' with message '([^']*)'/ => [[:flag], [:flag]],
     /app\/code\/local\/([^\/]+)/ => [[:flag, "not Magento code"]],
   }
-end
-
-class DocumentRoot < Scannable
-end
-  
-class DocRoot < DocumentRoot
-  attr_reader :rootpath
-
-  def initialize(rootpath)
-    @rootpath = Pathname.new rootpath
-  end
-
-  def label
-    rootpath
-  end
-  
-  def scanroot(rootpath)
-    etcpath = rootpath + 'app/etc'
-    ["local.xml", "enterprise.xml"].each do |xmlfile|
-      if (etcpath + xmlfile).exist?
-        alsoscan [MagentoXmlFile, etcpath + xmlfile]
-      end
-    end
-    if (rootpath + 'app/Mage.php').exist?
-      alsoscan [MagVersion, rootpath]
-    end
-    if (logpath = rootpath + 'var/log/exception.log').exist?
-      alsoscan [MagExceptionLog, logpath]
-    end
-  end
-  
-  def scan
-    self.saved = Hash.new
-    header
-    if rootpath.exist?
-      etcpath = rootpath + "app/etc"
-      if etcpath.exist?
-        scanroot rootpath
-      else
-        puts colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
-        Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
-          etcpath = rootpath + dir + "app/etc"
-          if etcpath.exist?
-            puts colorize(:invert) + "But #{rootpath + dir} is." + colorize(:off)
-            scanroot rootpath + dir
-          end
-        end
-      end
-    else
-      puts colorize(:redbg) + rootpath + " does not exist" + colorize(:off)
-    end
-  end
 end
 
 class ApacheFile < ConfFile
