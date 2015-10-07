@@ -158,7 +158,7 @@ class Scannable
             showline = true
           elsif state == :good
             begininsert = colorize(:greenfg)
-            showline = true
+            showline = false
           else
             begininsert = colorize(:yellowfg)
           end
