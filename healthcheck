@@ -78,19 +78,19 @@ class Scannable
         value = Integer saved[value]
       end
       if test == "="
-        return ((Integer data) == value)
+        return data == value
       elsif test == ">"
-        return ((Integer data) > value)
+        return data > value
       elsif test == "<"
-        return ((Integer data) < value)
+        return data < value
       elsif test == ">="
-        return ((Integer data) >= value)
+        return data >= value
       elsif test == "<="
-        return ((Integer data) <= value)
+        return data <= value
       elsif test == "eq"
-        return (data == value)
+        return data == value
       elsif test == "ne"
-        return (data != value)
+        return data != value
       elsif test == :okay
         return true
       elsif test == :alsocheck
@@ -103,6 +103,11 @@ class Scannable
   end
 
   def cleanup(value)
+    if /^\d+\.\d+$/ =~ value
+      value = Float value
+    elsif /^\d+$/ =~ value
+      value = Integer value
+    end
     return(value)
   end
   
@@ -279,6 +284,21 @@ end
 
 class Iostat < ShellCommand
   self.cmd = 'iostat -dx 3 6'
+  self.matches = {
+    /^\w+\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)/ => [
+      [:okay],
+      [:okay],
+      [:okay],
+      [:okay],
+      [:okay],
+      [:okay],
+      [:okay],
+      [:okay],
+      ["<", 100],
+      [:okay],
+      [:okay],
+    ]
+  }
 end
 
 class ScannableFile < Scannable
