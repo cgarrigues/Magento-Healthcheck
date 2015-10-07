@@ -285,18 +285,8 @@ end
 class Iostat < ShellCommand
   self.cmd = 'iostat -dx 3 6'
   self.matches = {
-    /^\w+\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)/ => [
-      [:okay],
-      [:okay],
-      [:okay],
-      [:okay],
-      [:okay],
-      [:okay],
-      [:okay],
-      [:okay],
+    /^\w+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+([\d\.]+)\s+[\d\.]+\s+[\d\.]+/ => [
       ["<", 100],
-      [:okay],
-      [:okay],
     ]
   }
 end
