@@ -313,8 +313,14 @@ class ScannableFile < Scannable
   end
 
   def openstream
-    open(filename) do |s|
-      yield s
+    if filename =~ /\*/
+      Dir[filename].each do |f|
+        alsoscan([self.class, f])
+      end
+    else
+      open(filename) do |s|
+        yield s
+      end
     end
   end
 end
@@ -412,11 +418,13 @@ class Apache < Collection
   end
 end
 
-class Nginx < Collection
-  def initialize(*args)
-    super
-    @children = []
-  end
+class NginxConf < ConfFile
+end
+
+class NgConf < NginxConf
+  self.matches = {
+    /^\s*include\s+(\/\S+);/ => [[:alsocheck, NgConf]],
+  }
 end
 
 class RedisConf < ConfFile
@@ -451,7 +459,7 @@ class Ps < ShellCommand
   self.matches = {
     /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
     /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
-    /nginx: master process (\S*)/ => [[:alsocheck, Nginx]],
+    /nginx: master process .* -c (\S*)/ => [[:alsocheck, NgConf]],
     /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
     /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf]],
   }
