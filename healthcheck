@@ -740,12 +740,12 @@ class MagVersion < MagentoVersion
   def scan
     header
     openstream do |s|
-      puts colorize(:greenfg) + s.gets + colorize(:gree)
+      puts colorize(:greenfg) + s.gets + colorize(:off)
     end
   end
 end
 
-class XmlFile < Scannable
+class XmlFile < ScannableFile
 end
 
 class MagentoXmlFile < XmlFile
@@ -762,6 +762,13 @@ class MagentoXmlFile < XmlFile
   def scan
     self.saved = Hash.new
     header
+    if $options[:verbose]
+      openstream do |s|
+        while (line = s.gets)
+          puts line
+      end
+      end
+    end
     doc = REXML::Document.new File.new(filename, "r")
     ["cache", "full_page_cache"].each do |foo|
       doc.elements.each("config/global/#{foo}") do |cache|
