@@ -433,7 +433,7 @@ end
 class UnameA < ShellCommand
   self.cmd = 'uname -a'
   self.matches = {
-    /\s\S+\s(\S+)/ => [[:okay]]
+    /\s\S+\s(\S+)/ => [[:save, :kernel_version]]
   }
 end
 
@@ -754,7 +754,9 @@ class MagVersion < MagentoVersion
   def scan
     header
     openstream do |s|
-      puts colorize(:greenfg) + s.gets + colorize(:off)
+      version = s.gets
+      $saved[:magento_version] = version
+      printline colorize(:greenfg) + version + colorize(:off)
     end
   end
 end
@@ -851,4 +853,9 @@ while check = $checks.shift do
   end
   #puts $checks.inspect
 end
-puts $saved.inspect
+
+puts
+puts "#{colorize(:underline)}#{colorize(:bright)}Summary#{colorize(:off)}"
+puts "Magento version: #{$saved[:magento_version]}"
+puts "kernel version: #{$saved[:kernel_version]}"
+
