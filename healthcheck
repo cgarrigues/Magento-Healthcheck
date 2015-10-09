@@ -68,6 +68,23 @@ class Scannable
     puts "#{colorize(:underline)}#{self.class.superclass}: #{colorize(:bright)}#{label}#{colorize(:off)}"
   end
 
+  def printheader
+    if $options[:quiet]
+      @printedheader = false
+    else
+      header
+      @printedheader = true
+    end
+  end
+
+  def printline(line)
+    unless @printedheader
+      header
+      @printedheader = true
+    end
+    puts line
+  end
+  
   def okay(data, test, value)
     data = cleanup(data)
     if test == :save
@@ -177,16 +194,16 @@ class Scannable
   
   def scan
     self.saved = Hash.new
-    header
+    printheader
     openstream do |s|
       while (line = s.gets)
         if (line = scanline line.chop)
-          puts line
+          printline line
         end
       end
     end
     if self.class.matches == {}
-      puts colorize(:invert) + 'No match rules defined yet' + colorize(:off)
+      printline colorize(:invert) + 'No match rules defined yet' + colorize(:off)
     end
   end
 end
@@ -466,23 +483,23 @@ class DocRoot < DocumentRoot
   
   def scan
     self.saved = Hash.new
-    header
+    printheader
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
       if etcpath.exist?
         scanroot rootpath
       else
-        puts colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
+        printline colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
         Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
           etcpath = rootpath + dir + "app/etc"
           if etcpath.exist?
-            puts colorize(:invert) + "But #{rootpath + dir} is." + colorize(:off)
+            printline colorize(:invert) + "But #{rootpath + dir} is." + colorize(:off)
             scanroot rootpath + dir
           end
         end
       end
     else
-      puts colorize(:redbg) + rootpath + " does not exist" + colorize(:off)
+      printline colorize(:redbg) + rootpath + " does not exist" + colorize(:off)
     end
   end
 end
@@ -536,7 +553,7 @@ class HttpdV < ShellCommand
   def also_check
     if saved[:httpdroot] && saved[:serverconfigfile]
       configfile = saved[:httpdroot] + "/" + saved[:serverconfigfile]
-      puts colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
+      printline colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
       [[ApacheFile, configfile]]
     else
       []
@@ -599,10 +616,10 @@ class PhpM < ShellCommand
 
   def process_saved
     unless self.saved[:bcmath]
-      puts colorize(:invert) + "bcmath is a required php module" + colorize(:off)
+      printline colorize(:invert) + "bcmath is a required php module" + colorize(:off)
     end
     unless self.saved[:cache]
-      puts colorize(:invert) + "either memcache or redis modules are required" + colorize(:off)
+      printline colorize(:invert) + "either memcache or redis modules are required" + colorize(:off)
     end
   end
 end
@@ -760,12 +777,12 @@ class MagentoXmlFile < XmlFile
   
   def scan
     self.saved = Hash.new
-    header
+    printheader
     if $options[:verbose]
       openstream do |s|
         while (line = s.gets)
           puts line
-      end
+        end
       end
     end
     doc = REXML::Document.new File.new(filename, "r")
@@ -778,13 +795,13 @@ class MagentoXmlFile < XmlFile
             hostname = cache.elements["memcached/servers/server/host"].text
             port = cache.elements["memcached/servers/server/port"].text
             back = Memcached
-            puts colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{hostname}:#{port}." + colorize(:off)
+            printline colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{hostname}:#{port}." + colorize(:off)
             alsoscan [Memcached, hostname, port]
           elsif backend == "Cm_Cache_Backend_Redis"
             hostname = cache.elements["backend_options/server"].text
             port = cache.elements["backend_options/port"].text
             back = Redis
-            puts colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{hostname}:#{port}." + colorize(:off)
+            printline colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{hostname}:#{port}." + colorize(:off)
             alsoscan [Redis, hostname, port]
           end
         end
@@ -793,7 +810,7 @@ class MagentoXmlFile < XmlFile
     if redis_session = doc.elements["config/global/redis_session"]
       hostname = redis_session.elements["host"].text
       port = redis_session.elements["port"].text
-      puts colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
+      printline colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
       alsoscan [Redis, hostname, port]
     end
     if resources = doc.elements["config/global/resources"]
@@ -802,7 +819,7 @@ class MagentoXmlFile < XmlFile
       username = connection.elements["username"].text
       password = connection.elements["password"].text
       dbname = connection.elements["dbname"].text
-      puts colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{hostname}." + colorize(:off)
+      printline colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{hostname}." + colorize(:off)
       alsoscan [Mysql, hostname, username, password, dbname]
     end
   end
