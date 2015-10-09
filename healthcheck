@@ -6,6 +6,8 @@ require 'optparse'
 require 'pathname'
 
 $options = Hash.new
+$saved = Hash.new
+
 OptionParser.new do |opt|
   opt.on('-v', '--verbose', 'Show all output of commands') { |o| $options[:verbose] = o}
   opt.on('-q', '--quiet', "Don't show output of unimportant stuff") { |o| $options[:quiet] = o}
@@ -44,8 +46,6 @@ def colorize(key)
 end
 
 class Scannable
-  attr_accessor :saved
-
   @@matches = Hash.new { |hash, key| hash[key] = Hash.new }
   
   class << self
@@ -88,11 +88,11 @@ class Scannable
   def okay(data, test, value)
     data = cleanup(data)
     if test == :save
-      saved[value] = data
+      $saved[value] = data
       return :note
     else
       if value.class == Symbol
-        value = Integer saved[value]
+        value = Integer $saved[value]
       end
       if test == "="
         return data == value
@@ -134,7 +134,7 @@ class Scannable
     self.class.matches.each do |key, tests|
       if key.is_a? Array
         (field, value, key) = key
-        unless (self.saved[field] == value)
+        unless ($saved[field] == value)
           key = nil
         end
       end
@@ -193,7 +193,6 @@ class Scannable
   end
   
   def scan
-    self.saved = Hash.new
     printheader
     openstream do |s|
       while (line = s.gets)
@@ -482,7 +481,6 @@ class DocRoot < DocumentRoot
   end
   
   def scan
-    self.saved = Hash.new
     printheader
     if rootpath.exist?
       etcpath = rootpath + "app/etc"
@@ -551,8 +549,8 @@ class HttpdV < ShellCommand
   }
 
   def also_check
-    if saved[:httpdroot] && saved[:serverconfigfile]
-      configfile = saved[:httpdroot] + "/" + saved[:serverconfigfile]
+    if $saved[:httpdroot] && $saved[:serverconfigfile]
+      configfile = $saved[:httpdroot] + "/" + $saved[:serverconfigfile]
       printline colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
       [[ApacheFile, configfile]]
     else
@@ -615,10 +613,10 @@ class PhpM < ShellCommand
   }
 
   def process_saved
-    unless self.saved[:bcmath]
+    unless $saved[:bcmath]
       printline colorize(:invert) + "bcmath is a required php module" + colorize(:off)
     end
-    unless self.saved[:cache]
+    unless $saved[:cache]
       printline colorize(:invert) + "either memcache or redis modules are required" + colorize(:off)
     end
   end
@@ -776,7 +774,6 @@ class MagentoXmlFile < XmlFile
   end
   
   def scan
-    self.saved = Hash.new
     printheader
     if $options[:verbose]
       openstream do |s|
@@ -854,3 +851,4 @@ while check = $checks.shift do
   end
   #puts $checks.inspect
 end
+puts $saved.inspect
