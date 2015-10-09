@@ -758,7 +758,7 @@ class MagVersion < MagentoVersion
   end
   
   def scan
-    header
+    printheader
     openstream do |s|
       version = s.gets
       $saved[:magento_version] = version
