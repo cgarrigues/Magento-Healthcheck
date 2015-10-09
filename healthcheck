@@ -490,6 +490,26 @@ class DocRoot < DocumentRoot
     end
   end
   
+  def findallrootpaths(rootpath)
+    rootpaths = []
+    if rootpath.exist?
+      etcpath = rootpath + "app/etc"
+      if etcpath.exist?
+        rootpaths.push rootpath
+      else
+        Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
+          etcpath = rootpath + dir + "app/etc"
+          if etcpath.exist?
+            rootpaths.push(rootpath + dir)
+          else
+            rootpaths.concat findallrootpaths(rootpath + dir)
+          end
+        end
+      end
+    end
+    return(rootpaths)
+  end
+  
   def scan
     printheader
     if rootpath.exist?
@@ -498,12 +518,9 @@ class DocRoot < DocumentRoot
         scanroot rootpath
       else
         printline colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
-        Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
-          etcpath = rootpath + dir + "app/etc"
-          if etcpath.exist?
-            printline colorize(:invert) + "But #{rootpath + dir} is." + colorize(:off)
-            scanroot rootpath + dir
-          end
+        findallrootpaths(rootpath).each do |dir|
+          printline colorize(:invert) + "But #{dir} is." + colorize(:off)
+          scanroot rootpath + dir
         end
       end
     else
@@ -881,4 +898,5 @@ if $saved[:redis]
   puts "Running redis"
 end
 puts "Network interfaces: #{$saved[:network_addrs].join(', ')}"
-puts "Magento roots: #{$saved[:magento_roots].join(', ')}"
+puts "Magento roots:"
+puts "\t" + $saved[:magento_roots].join("\n\t")
