@@ -90,6 +90,11 @@ class Scannable
     if test == :save
       $saved[value] = data
       return :note
+    elsif test == :collect
+      unless $saved[value]
+        $saved[value] = []
+      end
+      $saved[value].push data
     else
       if value.class == Symbol
         value = Integer $saved[value]
@@ -380,7 +385,7 @@ end
 class Ifconfig < ShellCommand
   self.cmd = 'ifconfig -a'
   self.matches = {
-    /^(\S+)\s/ => [[:alsocheck, Ethtool]],
+    /^(\S+)\s/ => [[:alsocheck, Ethtool, :collect, :network_interfaces]],
     /errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
     /errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
   }
@@ -870,3 +875,4 @@ end
 if $saved[:redis]
   puts "Running redis"
 end
+puts "Network interfaces: #{$saved[:network_interfaces].join(', ')}"
