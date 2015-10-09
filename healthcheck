@@ -515,11 +515,11 @@ end
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache]],
-    /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache]],
-    /nginx: master process .* -c (\S*)/ => [[:alsocheck, NgConf]],
-    /(memcached).*-m (\d+)/ => [[:okay], [">", 1024]],
-    /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf]],
+    /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache, :save, :apache]],
+    /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache, :save, :apache]],
+    /nginx: master process .* -c (\S*)/ => [[:alsocheck, NgConf, :save, :nginx]],
+    /(memcached).*-m (\d+)/ => [[:okay, :save, :memcache], [">", 1024]],
+    /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf, :save, :redis]],
   }
   
 end
@@ -857,5 +857,16 @@ end
 puts
 puts "#{colorize(:underline)}#{colorize(:bright)}Summary#{colorize(:off)}"
 puts "Magento version: #{$saved[:magento_version]}"
-puts "kernel version: #{$saved[:kernel_version]}"
-
+puts "Kernel version: #{$saved[:kernel_version]}"
+if $saved[:apache]
+  puts "Running apache"
+end
+if $saved[:nginx]
+  puts "Running nginx"
+end
+if $saved[:memcache]
+  puts "Running memcache"
+end
+if $saved[:redis]
+  puts "Running redis"
+end
