@@ -385,7 +385,8 @@ end
 class Ifconfig < ShellCommand
   self.cmd = 'ifconfig -a'
   self.matches = {
-    /^(\S+)\s/ => [[:alsocheck, Ethtool, :collect, :network_interfaces]],
+    /^(\S+)\s/ => [[:alsocheck, Ethtool]],
+    /inet addr:(\S+)\s/ => [[:collect, :network_addrs]],
     /errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
     /errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
   }
@@ -875,4 +876,4 @@ end
 if $saved[:redis]
   puts "Running redis"
 end
-puts "Network interfaces: #{$saved[:network_interfaces].join(', ')}"
+puts "Network interfaces: #{$saved[:network_addrs].join(', ')}"
