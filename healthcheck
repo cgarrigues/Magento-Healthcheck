@@ -260,10 +260,14 @@ class Cache < ShellCommand
   end
 
   def openstream
-    TCPSocket.open(hostname, port) do |s|
-      s.puts cmd + "\r"
-      s.puts quitcmd + "\r"
-      yield s
+    begin
+      TCPSocket.open(hostname, port) do |s|
+        s.puts cmd + "\r"
+        s.puts quitcmd + "\r"
+        yield s
+      end
+    rescue Exception => e
+      printline colorize(:redbg) + e.message + colorize(:off)
     end
   end
 end
@@ -781,9 +785,12 @@ class MagVersion < MagentoVersion
   def scan
     printheader
     openstream do |s|
-      version = s.gets
-      $saved[:magento_version] = version
-      printline colorize(:greenfg) + version + colorize(:off)
+      if version = s.gets
+        $saved[:magento_version] = version
+        printline colorize(:greenfg) + version + colorize(:off)
+      else
+        printline colorize(:redbg) + "couldn't read the version" + colorize(:off)
+      end
     end
   end
 end
@@ -801,6 +808,12 @@ class MagentoXmlFile < XmlFile
   def label
     filename
   end
+
+  def gettext(session, elementname)
+    if element = session.elements[elementname]
+      return element.text
+    end
+  end
   
   def scan
     printheader
@@ -814,39 +827,67 @@ class MagentoXmlFile < XmlFile
     doc = REXML::Document.new File.new(filename, "r")
     ["cache", "full_page_cache"].each do |foo|
       doc.elements.each("config/global/#{foo}") do |cache|
-        backend = cache.elements["backend"]
-        unless backend.nil?
-          backend = backend.text
+        if backend = gettext(cache,"backend")
           if backend == "memcached"
-            hostname = cache.elements["memcached/servers/server/host"].text
-            port = cache.elements["memcached/servers/server/port"].text
-            back = Memcached
-            printline colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{hostname}:#{port}." + colorize(:off)
-            alsoscan [Memcached, hostname, port]
+            if hostname = gettext(cache, "memcached/servers/server/host")
+              if port = gettext(cache, "memcached/servers/server/port")
+                back = Memcached
+                printline colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{hostname}:#{port}." + colorize(:off)
+                alsoscan [Memcached, hostname, port]
+              else
+                printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/memcached/servers/server/port" + colorize(:off)
+              end
+            else
+              printline colorize(:redbg) + "host not properly defined in config/global/#{foo}/memcached/servers/server/host" + colorize(:off)
+            end
           elsif backend == "Cm_Cache_Backend_Redis"
-            hostname = cache.elements["backend_options/server"].text
-            port = cache.elements["backend_options/port"].text
-            back = Redis
-            printline colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{hostname}:#{port}." + colorize(:off)
-            alsoscan [Redis, hostname, port]
+            if hostname = gettext(cache, "backend_options/server")
+              if port = gettext(cache, "backend_options/port")
+                back = Redis
+                printline colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{hostname}:#{port}." + colorize(:off)
+                alsoscan [Redis, hostname, port]
+              else
+                printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/backend_options/port" + colorize(:off)
+              end
+            else
+              printline colorize(:redbg) + "hostname not properly defined in config/global/#{foo}/backend_options/server" + colorize(:off)
+            end
           end
         end
       end
     end
     if redis_session = doc.elements["config/global/redis_session"]
-      hostname = redis_session.elements["host"].text
-      port = redis_session.elements["port"].text
-      printline colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
-      alsoscan [Redis, hostname, port]
+      if hostname = gettext(redis_session, "host")
+        if port = gettext(redis_session, "port")
+          printline colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
+          alsoscan [Redis, hostname, port]
+        else
+          printline colorize(:redbg) + "port not properly defined in config/global/redis_session" + colorize(:off)
+        end
+      else
+        printline colorize(:redbg) + "host not properly defined in config/global/redis_session" + colorize(:off)
+      end
     end
     if resources = doc.elements["config/global/resources"]
       connection = resources.elements["default_setup/connection"]
-      hostname = connection.elements["host"].text
-      username = connection.elements["username"].text
-      password = connection.elements["password"].text
-      dbname = connection.elements["dbname"].text
-      printline colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{hostname}." + colorize(:off)
-      alsoscan [Mysql, hostname, username, password, dbname]
+      if hostname = gettext(connection, "host")
+        if username = gettext(connection, "username")
+          if password = gettext(connection, "password")
+            if dbname = gettext(connection, "dbname")
+              printline colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{hostname}." + colorize(:off)
+              alsoscan [Mysql, hostname, username, password, dbname]
+            else
+              printline colorize(:redbg) + "dbname not properly defined in default_setup/connection" + colorize(:off)
+            end
+          else
+            printline colorize(:redbg) + "password not properly defined in default_setup/connection" + colorize(:off)
+          end
+        else
+          printline colorize(:redbg) + "username not properly defined in default_setup/connection" + colorize(:off)
+        end
+      else
+        printline colorize(:redbg) + "hostname not properly defined in default_setup/connection" + colorize(:off)
+      end
     end
   end
 end
