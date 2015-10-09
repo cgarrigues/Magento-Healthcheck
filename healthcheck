@@ -473,6 +473,10 @@ class DocRoot < DocumentRoot
   
   def scanroot(rootpath)
     etcpath = rootpath + 'app/etc'
+    unless $saved[:magento_roots]
+      $saved[:magento_roots] = []
+    end
+    $saved[:magento_roots].push rootpath
     ["local.xml", "enterprise.xml"].each do |xmlfile|
       if (etcpath + xmlfile).exist?
         alsoscan [MagentoXmlFile, etcpath + xmlfile]
@@ -877,3 +881,4 @@ if $saved[:redis]
   puts "Running redis"
 end
 puts "Network interfaces: #{$saved[:network_addrs].join(', ')}"
+puts "Magento roots: #{$saved[:magento_roots].join(', ')}"
