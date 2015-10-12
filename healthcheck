@@ -84,9 +84,9 @@ class Scannable
       header
       @printedheader = true
     end
-    if heading
-      puts heading
-      heading = nil
+    if self.heading
+      puts self.heading
+      self.heading = nil
     end
     puts line
   end
@@ -96,6 +96,12 @@ class Scannable
     if test == :save
       $saved[value] = data
       return :note
+    elsif test == :count
+      if $saved[value]
+        $saved[value] += 1
+      else
+        $saved[value] = 1
+      end
     elsif test == :collect
       unless $saved[value]
         $saved[value] = []
@@ -197,7 +203,9 @@ class Scannable
           line = (colorize(:bright) + line + colorize(:off))
         elsif tests == :heading
           unless $options[:verbose]
-            heading = line
+            self.heading = line
+            showline = false
+            match = false
           end
         end
       end
@@ -333,6 +341,28 @@ end
 
 class Netstat < ShellCommand
   self.cmd = 'netstat -nap'
+  self.matches = {
+    /^Proto/ => :heading,
+    /(TIME_WAIT)/ => [[:count, :time_wait]],
+    /(SYN_RECV)/ => [[:count, :syn_recv]],
+  }
+
+  def process_saved
+    if $saved[:time_wait]
+      if $saved[:time_wait] > 10
+        printline colorize(:greenfg) + "there are #{$saved[:time_wait]} connections stuck in TIME_WAIT" + colorize(:off)
+      else
+        printline colorize(:redbg) + "there are #{$saved[:time_wait]} connections stuck in TIME_WAIT" + colorize(:off)
+      end
+    end
+    if $saved[:syn_recv]
+      if $saved[:syn_recv] > 10
+        printline colorize(:greenfg) + "there are #{$saved[:syn_recv]} connections stuck in SYN_RECV" + colorize(:off)
+      else
+        printline colorize(:redbg) + "there are #{$saved[:syn_recv]} connections stuck in SYN_RECV" + colorize(:off)
+      end
+    end
+  end
 end
 
 class Iostat < ShellCommand
@@ -457,6 +487,7 @@ end
 class Collection
   attr_reader :args
   attr_accessor :children
+  attr_accessor :heading
 
   def initialize(*args)
     @args = args
@@ -943,7 +974,7 @@ class MagentoXmlFile < XmlFile
 end
 
 $oldchecks = []
-$checks = [UnameA, Ifconfig, DfHt, DfHit, Ps, Sysctl, Netstat, Iostat, Vmstat, Dmesg, Lsmod, Free, Uptime, Last]
+$checks = [UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, Sysctl, Iostat, Vmstat, Dmesg, Lsmod, Free, Uptime, Last]
 
 def alsoscan(item)
   unless ($checks.include? item) or ($oldchecks.include? item)
@@ -961,6 +992,7 @@ while check = $checks.shift do
     item = check.new
   end
   item.scan
+  item.heading = nil
   if item.respond_to? :process_saved
     item.process_saved
   end
