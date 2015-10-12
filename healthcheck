@@ -390,6 +390,11 @@ end
 
 class Vmstat < ShellCommand
   self.cmd = 'vmstat 1 10'
+  self.matches = {
+    /\sr\s+b\s/ => :heading,
+    #     r     b   swpd  free  buff  cache   si      so
+    /^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)/ => [["=", 0],["=", 0]],
+  }
 end
 
 class Mpmstat < ShellCommand
@@ -437,6 +442,9 @@ end
 
 class Iptables < ShellCommand
   self.cmd = 'iptables -L -n -v'
+  self.matches = {
+    /^Chain/ => :heading,
+  }
 end
 
 class Lsmod < ShellCommand
