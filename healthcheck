@@ -633,11 +633,41 @@ end
 class MysqlLog < LogFile
 end
 
+class User < Scannable
+end
+
+class Crontab < ConfFile
+end
+
+class UserCrontab < Crontab
+  self.matches = {
+    /(cron.sh)/ => [[:count, :cron]],
+    /(cron.php)/ => [[:flag, "should call cron.sh, not cron.php"]],
+  }
+end
+
+class WebUser < User
+  attr_reader :userid
+
+  def initialize(userid)
+    @userid = userid
+  end
+
+  def scan
+    crondir = Pathname.new "/var/spool/cron/"
+    if (cronfile = crondir + userid).exist?
+      alsoscan [UserCrontab, cronfile]
+    end
+  end
+end
+
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
     /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache, :save, :apache]],
+    /(\w+).*\s[\/a-z]*apache2?/ => [[:alsocheck, WebUser]],
     /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache, :save, :apache]],
+    /(\w+).*\s[\/a-z]*httpd/ => [[:alsocheck, WebUser]],
     /nginx: master process .* -c (\S*)/ => [[:alsocheck, NgConf, :save, :nginx]],
     /(memcached).*-m (\d+)/ => [[:save, :memcache], [">", 1024]],
     /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf, :save, :redis]],
