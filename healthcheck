@@ -385,6 +385,9 @@ end
 
 class Free < ShellCommand
   self.cmd = 'free -mo'
+  self.matches = {
+    /Swap:\s+\d+\s+(\d+)/ => [["=", 0]],
+  }
 end
 
 class Uptime < ShellCommand
@@ -396,6 +399,9 @@ end
 
 class Last < ShellCommand
   self.cmd = 'last'
+  self.matches = {
+    /^reboot.*(\w\w\w \w\w\w +\d+ \d\d:\d\d - \d\d\:\d\d)/ => [[:okay]],
+  }
 end
 
 class Ethtool < ShellCommand
