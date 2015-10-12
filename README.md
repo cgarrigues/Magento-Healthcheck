@@ -7,7 +7,7 @@ Pull down and execute the script using
 
 ```bash
 wget https://github.com/cgarrigues/Magento-Healthcheck/raw/master/healthcheck
-chmod +x wget
+chmod +x healthcheck
 ./healthcheck
 ```
 
