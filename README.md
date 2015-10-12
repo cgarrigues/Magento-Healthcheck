@@ -6,7 +6,7 @@ Script is not yet ready for prime time and there are many things which are not y
 Pull down and execute the script using
 
 ```bash
-wget https://github.com/cgarrigues/Magento-Healthcheck/raw/master/healthcheck
+wget -r https://github.com/cgarrigues/Magento-Healthcheck/raw/master/healthcheck
 chmod +x healthcheck
 ./healthcheck
 ```
