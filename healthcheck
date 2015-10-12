@@ -46,8 +46,10 @@ def colorize(key)
 end
 
 class Scannable
-  @@matches = Hash.new { |hash, key| hash[key] = Hash.new }
+  attr_accessor :heading
   
+  @@matches = Hash.new { |hash, key| hash[key] = Hash.new }
+
   class << self
     def matches
       @@matches[self]
@@ -81,6 +83,10 @@ class Scannable
     unless @printedheader
       header
       @printedheader = true
+    end
+    if heading
+      puts heading
+      heading = nil
     end
     puts line
   end
@@ -145,49 +151,55 @@ class Scannable
       end
       if key and (matchdata = (key.match line))
         match = true
-        (1..tests.length).to_a.reverse.each do |i|
-          testpairs = tests[i-1].dup
-          endinsert = nil
-          state = nil
-          while test = testpairs.shift
-            value = testpairs.shift
-            setstate = okay(matchdata[i], test, value)
-            if setstate == :note
-              unless state
-                endinsert = colorize(:off) + colorize(:bright)
-                state = :note
-              end
-            elsif setstate
-              unless state == :bad
-                endinsert = colorize(:off) + colorize(:bright)
-                state ||= :good
-              end
-            else
-              if test == :flag
-                if value
-                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
-                else
+        if tests.is_a? Array
+          (1..tests.length).to_a.reverse.each do |i|
+            testpairs = tests[i-1].dup
+            endinsert = nil
+            state = nil
+            while test = testpairs.shift
+              value = testpairs.shift
+              setstate = okay(matchdata[i], test, value)
+              if setstate == :note
+                unless state
                   endinsert = colorize(:off) + colorize(:bright)
+                  state = :note
+                end
+              elsif setstate
+                unless state == :bad
+                  endinsert = colorize(:off) + colorize(:bright)
+                  state ||= :good
                 end
               else
-                endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+                if test == :flag
+                  if value
+                    endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+                  else
+                    endinsert = colorize(:off) + colorize(:bright)
+                  end
+                else
+                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+                end
+                state = :bad
               end
-              state = :bad
             end
+            if state == :bad
+              begininsert = colorize(:redbg)
+              showline = true
+            elsif state == :good
+              begininsert = colorize(:greenfg)
+              showline = false
+            else
+              begininsert = colorize(:yellowfg)
+            end
+            line.insert(matchdata.end(i), endinsert)
+            line.insert(matchdata.begin(i), begininsert)
           end
-          if state == :bad
-            begininsert = colorize(:redbg)
-            showline = true
-          elsif state == :good
-            begininsert = colorize(:greenfg)
-            showline = false
-          else
-            begininsert = colorize(:yellowfg)
+          line = (colorize(:bright) + line + colorize(:off))
+        elsif tests == :heading
+          unless $options[:verbose]
+            heading = line
           end
-          line.insert(matchdata.end(i), endinsert)
-          line.insert(matchdata.begin(i), begininsert)
         end
-        line = (colorize(:bright) + line + colorize(:off))
       end
     end
     if (match or $options[:verbose])
@@ -196,7 +208,7 @@ class Scannable
       end
     end
   end
-  
+
   def scan
     printheader
     openstream do |s|
@@ -326,7 +338,8 @@ end
 class Iostat < ShellCommand
   self.cmd = 'iostat -dx 3 6'
   self.matches = {
-    /^\w+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+([\d\.]+)\s+[\d\.]+\s+[\d\.]+/ => [
+    /^Device/ => :heading,
+    /^\S+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+([\d\.]+)\s+[\d\.]+\s+[\d\.]+/ => [
       ["<", 100],
     ]
   }
@@ -386,6 +399,7 @@ end
 class Free < ShellCommand
   self.cmd = 'free -mo'
   self.matches = {
+    /total/ => :heading,
     /Swap:\s+\d+\s+(\d+)/ => [["=", 0]],
   }
 end
