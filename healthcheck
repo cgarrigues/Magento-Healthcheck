@@ -573,6 +573,9 @@ class DocRoot < DocumentRoot
     if (logpath = rootpath + 'var/log/exception.log').exist?
       alsoscan [MagExceptionLog, logpath]
     end
+    if (htaccesspath = rootpath + '.htaccess').exist?
+      alsoscan [HtAccess, htaccesspath]
+    end
   end
   
   def findallrootpaths(rootpath)
@@ -684,6 +687,9 @@ class MagExceptionLog < LogFile
     /exception\s'([^']*)' with message '([^']*)'/ => [[:flag], [:flag]],
     /app\/code\/local\/([^\/]+)/ => [[:flag, "not Magento code"]],
   }
+end
+
+class HtAccess < ConfFile
 end
 
 class Messages < LogFile
