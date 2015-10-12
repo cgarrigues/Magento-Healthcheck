@@ -550,7 +550,7 @@ class Ps < ShellCommand
     /root.*\s([\/a-z]*apache2?)/ => [[:alsocheck, Apache, :save, :apache]],
     /root.*\s([\/a-z]*httpd)/ => [[:alsocheck, Apache, :save, :apache]],
     /nginx: master process .* -c (\S*)/ => [[:alsocheck, NgConf, :save, :nginx]],
-    /(memcached).*-m (\d+)/ => [[:okay, :save, :memcache], [">", 1024]],
+    /(memcached).*-m (\d+)/ => [[:save, :memcache], [">", 1024]],
     /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf, :save, :redis]],
   }
   
