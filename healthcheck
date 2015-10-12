@@ -256,12 +256,24 @@ class Cache < ShellCommand
   end
 
   def label
-    "#{self.class} at #{ipaddress}:#{port}"
+    if /^[\d\.]+$/ =~ ipaddress
+      "#{self.class} at #{ipaddress}:#{port}"
+    else
+      "#{self.class} at #{ipaddress}"
+    end
   end
 
+  def opentcporunixsocket(ipaddress, port)
+    if /^[\d\.]+$/ =~ ipaddress
+      return TCPSocket.open(ipaddress, port)
+    else
+      return UNIXSocket.open(ipaddress)
+    end
+  end
+  
   def openstream
     begin
-      TCPSocket.open(ipaddress, port) do |s|
+      opentcporunixsocket(ipaddress, port) do |s|
         s.puts cmd + "\r"
         s.puts quitcmd + "\r"
         yield s
