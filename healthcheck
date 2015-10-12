@@ -624,6 +624,12 @@ class NgConf < NginxConf
   }
 end
 
+class LogFile < ScannableFile
+end
+
+class MysqlLog < LogFile
+end
+
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
@@ -632,6 +638,7 @@ class Ps < ShellCommand
     /nginx: master process .* -c (\S*)/ => [[:alsocheck, NgConf, :save, :nginx]],
     /(memcached).*-m (\d+)/ => [[:save, :memcache], [">", 1024]],
     /redis-server\s+(\S+)/ => [[:alsocheck, RedisConf, :save, :redis]],
+    /mysqld.*--log-error=([\/\.\w]+)/ => [[:alsocheck, MysqlLog]],
   }
   
 end
@@ -672,14 +679,17 @@ class HttpdV < ShellCommand
   end
 end
 
-class LogFile < ScannableFile
-end
-
 class MagExceptionLog < LogFile
   self.matches = {
     /exception\s'([^']*)' with message '([^']*)'/ => [[:flag], [:flag]],
     /app\/code\/local\/([^\/]+)/ => [[:flag, "not Magento code"]],
   }
+end
+
+class Messages < LogFile
+  def initialize
+    super('/var/log/messages')
+  end
 end
 
 class ApacheFile < ConfFile
@@ -977,7 +987,7 @@ class MagentoXmlFile < XmlFile
 end
 
 $oldchecks = []
-$checks = [UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, Sysctl, Iostat, Vmstat, Dmesg, Lsmod, Free, Uptime, Last]
+$checks = [UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
 
 def alsoscan(item)
   unless ($checks.include? item) or ($oldchecks.include? item)
