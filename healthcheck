@@ -282,6 +282,7 @@ end
 class Redis < Cache
   self.cmd = 'info'
   self.matches = {
+    /redis_version:(\s+)/ => [[:save, :redis_version]],
     /evicted_keys:(\d+)/ => [["=", 0]],
     /connected_clients:(\d+)/ => [[">", 0]],
   }
@@ -575,6 +576,7 @@ class HttpdV < ShellCommand
 
   self.matches = {
     /Server MPM:\s+(\S+)/ => [[:okay]],
+    /Server version:\s*Apache\/(\S+)/ => [[:save, :apache_version]],
     /^ -D HTTPD_ROOT="(\S+)"/ => [[:save, :httpdroot]],
     /^ -D SERVER_CONFIG_FILE="(\S+)"/ => [[:save, :serverconfigfile]],
   }
@@ -660,6 +662,7 @@ class PhpI < ShellCommand
     [:section, "session",  /^session.gc_maxlifetime => (\d+) => (\d+)/]  => [["=", 1440], ["=", 1440]],
     [:section, "session",  /^session.gc_probability => (\d+) => (\d+)/]  => [["=", 1], ["=", 1]],
     [:section, "session",  /^session.cookie_lifetime => (\d+) => (\d+)/] => [["=", 0], ["=", 0]],
+    [:section, "Core",     /^PHP Version => (\S+)/]                       => [[:save, :php_version]],
     [:section, "Core",     /^memory_limit => (\d+)M => (\d+)M/]          => [[">=", 256], [">=", 256]],
     [:section, "Core",     /^max_execution_time => (\d+) => (\d+)/]      => [["=", 18000], ["=", 18000]],
     [:section, "Core",     /^max_input_vars => (\d+) => (\d+)/]          => [[">=", 2000], [">=", 2000]],
@@ -668,7 +671,8 @@ class PhpI < ShellCommand
     [:section, "Core",     /^disable_functions => (.+) => (.+)/]         => [["eq", "no value"], ["eq", "no value"]],
     [:section, "Core",     /^open_basedir => (.+) => (.+)/]              => [["eq", "no value"], ["eq", "no value"]],
     [:section, "Core",     /^safe_mode => (.+) => (.+)/]                 => [["eq", "Off"], ["eq", "Off"]],
-    [:section, "memcache", /^Version => ([0-9\.]+)/]                     => [["eq", "3.0.5"]],
+    [:section, "memcache", /^Version => (\S+)/]                          => [["eq", "3.0.5", :save, :memcache_version]],
+    [:section, "mysql",    /^Client API version => (\S+)/]               => [[:save, :mysql_client_api_version]],
   }
 end
 
@@ -926,17 +930,23 @@ puts
 puts "#{colorize(:underline)}#{colorize(:bright)}Summary#{colorize(:off)}"
 puts "Magento version: #{$saved[:magento_version]}"
 puts "Kernel version: #{$saved[:kernel_version]}"
-if $saved[:apache]
-  puts "Running apache"
+if $saved[:apache_version]
+  puts "Apache version: #{$saved[:apache_version]}"
 end
 if $saved[:nginx]
   puts "Running nginx"
 end
-if $saved[:memcache]
-  puts "Running memcache"
+if $saved[:memcache_version]
+  puts "memcache version: #{$saved[:memcache_version]}"
 end
-if $saved[:redis]
-  puts "Running redis"
+if $saved[:redis_version]
+  puts "Redis version: #{$saved[:redis_version]}"
+end
+if $saved[:php_version]
+  puts "PHP version: #{$saved[:php_version]}"
+end
+if $saved[:mysql_client_api_version]
+  puts "Mysql Client API version: #{$saved[:mysql_client_api_version]}"
 end
 puts "Network interfaces: #{$saved[:network_addrs].join(', ')}"
 puts "Magento roots:"
