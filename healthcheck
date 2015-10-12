@@ -302,7 +302,7 @@ class Redis < Cache
   def initialize(*args)
     super
     if $saved[:network_addrs].include? ipaddress
-      puts colorize(:invert) + "Redis is on local host. up to 50% performance boost if switched to Unix sockets." + colorize(:off)
+      puts colorize(:invert) + "Redis is on local host. Up to 50% performance boost if switched to Unix sockets." + colorize(:off)
     end
     Sysctl.matches = {
       /vm.overcommit_memory = (\d+)/ => [["=", 1]],
@@ -387,8 +387,11 @@ class Free < ShellCommand
   self.cmd = 'free -mo'
 end
 
-class Top < ShellCommand
-  self.cmd = 'top -n1'
+class Uptime < ShellCommand
+  self.cmd = 'uptime'
+  self.matches = {
+    /load average: ([\d\.]+), ([\d\.]+), ([\d\.]+)/ => [["<", 100], ["<", 100], ["<", 100]],
+  }
 end
 
 class Last < ShellCommand
@@ -912,7 +915,7 @@ class MagentoXmlFile < XmlFile
 end
 
 $oldchecks = []
-$checks = [UnameA, Ifconfig, DfHt, DfHit, Ps, Sysctl, Netstat, Iostat, Vmstat, Dmesg, Lsmod, Free, Top, Last]
+$checks = [UnameA, Ifconfig, DfHt, DfHit, Ps, Sysctl, Netstat, Iostat, Vmstat, Dmesg, Lsmod, Free, Uptime, Last]
 
 def alsoscan(item)
   unless ($checks.include? item) or ($oldchecks.include? item)
