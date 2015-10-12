@@ -458,6 +458,9 @@ class Ethtool < ShellCommand
     super()
     self.class.cmd = "ethtool #{interface}"
   end
+  self.matches = {
+    /Link detected: (\w+)/ => [["=", "yes"]],
+  }
 end
 
 class Ifconfig < ShellCommand
