@@ -243,11 +243,11 @@ class ShellCommand < Scannable
 end
 
 class Cache < ShellCommand
-  attr_reader :hostname
+  attr_reader :ipaddress
   attr_reader :port
   
-  def initialize(hostname, port)
-    @hostname = hostname
+  def initialize(ipaddress, port)
+    @ipaddress = ipaddress
     @port = port
   end
 
@@ -256,12 +256,12 @@ class Cache < ShellCommand
   end
 
   def label
-    "#{self.class} at #{hostname}:#{port}"
+    "#{self.class} at #{ipaddress}:#{port}"
   end
 
   def openstream
     begin
-      TCPSocket.open(hostname, port) do |s|
+      TCPSocket.open(ipaddress, port) do |s|
         s.puts cmd + "\r"
         s.puts quitcmd + "\r"
         yield s
@@ -289,6 +289,9 @@ class Redis < Cache
   
   def initialize(*args)
     super
+    if $saved[:network_addrs].include? ipaddress
+      puts colorize(:invert) + "Redis is on local host. up to 50% performance boost if switched to Unix sockets." + colorize(:off)
+    end
     Sysctl.matches = {
       /vm.overcommit_memory = (\d+)/ => [["=", 1]],
     }
@@ -833,11 +836,11 @@ class MagentoXmlFile < XmlFile
       doc.elements.each("config/global/#{foo}") do |cache|
         if backend = gettext(cache,"backend")
           if backend == "memcached"
-            if hostname = gettext(cache, "memcached/servers/server/host")
+            if ipaddress = gettext(cache, "memcached/servers/server/host")
               if port = gettext(cache, "memcached/servers/server/port")
                 back = Memcached
-                printline colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{hostname}:#{port}." + colorize(:off)
-                alsoscan [Memcached, hostname, port]
+                printline colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{ipaddress}:#{port}." + colorize(:off)
+                alsoscan [Memcached, ipaddress, port]
               else
                 printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/memcached/servers/server/port" + colorize(:off)
               end
@@ -845,26 +848,26 @@ class MagentoXmlFile < XmlFile
               printline colorize(:redbg) + "host not properly defined in config/global/#{foo}/memcached/servers/server/host" + colorize(:off)
             end
           elsif backend == "Cm_Cache_Backend_Redis"
-            if hostname = gettext(cache, "backend_options/server")
+            if ipaddress = gettext(cache, "backend_options/server")
               if port = gettext(cache, "backend_options/port")
                 back = Redis
-                printline colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{hostname}:#{port}." + colorize(:off)
-                alsoscan [Redis, hostname, port]
+                printline colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{ipaddress}:#{port}." + colorize(:off)
+                alsoscan [Redis, ipaddress, port]
               else
                 printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/backend_options/port" + colorize(:off)
               end
             else
-              printline colorize(:redbg) + "hostname not properly defined in config/global/#{foo}/backend_options/server" + colorize(:off)
+              printline colorize(:redbg) + "ipaddress not properly defined in config/global/#{foo}/backend_options/server" + colorize(:off)
             end
           end
         end
       end
     end
     if redis_session = doc.elements["config/global/redis_session"]
-      if hostname = gettext(redis_session, "host")
+      if ipaddress = gettext(redis_session, "host")
         if port = gettext(redis_session, "port")
-          printline colorize(:invert) + "/config/global/redis_session on #{hostname}:#{port}." + colorize(:off)
-          alsoscan [Redis, hostname, port]
+          printline colorize(:invert) + "/config/global/redis_session on #{ipaddress}:#{port}." + colorize(:off)
+          alsoscan [Redis, ipaddress, port]
         else
           printline colorize(:redbg) + "port not properly defined in config/global/redis_session" + colorize(:off)
         end
@@ -874,12 +877,12 @@ class MagentoXmlFile < XmlFile
     end
     if resources = doc.elements["config/global/resources"]
       connection = resources.elements["default_setup/connection"]
-      if hostname = gettext(connection, "host")
+      if ipaddress = gettext(connection, "host")
         if username = gettext(connection, "username")
           if password = gettext(connection, "password")
             if dbname = gettext(connection, "dbname")
-              printline colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{hostname}." + colorize(:off)
-              alsoscan [Mysql, hostname, username, password, dbname]
+              printline colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{ipaddress}." + colorize(:off)
+              alsoscan [Mysql, ipaddress, username, password, dbname]
             else
               printline colorize(:redbg) + "dbname not properly defined in default_setup/connection" + colorize(:off)
             end
@@ -890,7 +893,7 @@ class MagentoXmlFile < XmlFile
           printline colorize(:redbg) + "username not properly defined in default_setup/connection" + colorize(:off)
         end
       else
-        printline colorize(:redbg) + "hostname not properly defined in default_setup/connection" + colorize(:off)
+        printline colorize(:redbg) + "ipaddress not properly defined in default_setup/connection" + colorize(:off)
       end
     end
   end
