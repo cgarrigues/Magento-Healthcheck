@@ -1045,6 +1045,42 @@ def alsoscan(item)
   end
 end
 
+def showsummary
+  cmd = "sha1sum #{$0}"
+  sha1sum = `#{cmd}`
+  sha1sum = sha1sum.split(/\s+/)[0]
+  
+  puts
+  puts "#{colorize(:underline)}#{colorize(:bright)}Summary#{colorize(:off)}"
+  puts "Healthcheck version: #{sha1sum}"
+  puts "Magento version: #{$saved[:magento_version]}"
+  puts "Kernel version: #{$saved[:kernel_version]}"
+  if $saved[:apache_version]
+    puts "Apache version: #{$saved[:apache_version]}"
+  end
+  if $saved[:nginx]
+    puts "Running nginx"
+  end
+  if $saved[:memcache_version]
+    puts "memcache version: #{$saved[:memcache_version]}"
+  end
+  if $saved[:redis_version]
+    puts "Redis version: #{$saved[:redis_version]}"
+  end
+  if $saved[:php_version]
+    puts "PHP version: #{$saved[:php_version]}"
+  end
+  if $saved[:mysql_client_api_version]
+    puts "Mysql Client API version: #{$saved[:mysql_client_api_version]}"
+  end
+  puts "Network interfaces: #{$saved[:network_addrs].join(', ')}"
+  puts "Magento roots:"
+  puts "\t" + $saved[:magento_roots].join("\n\t")
+  if $saved[:cron] != 1
+    puts colorize(:redbg) + "cron.sh is called in #{$saved[:cron]} places." + colorize(:off)
+  end
+end
+
 while check = $checks.shift do
   if check.is_a? Array
     objclass = check.shift
@@ -1066,34 +1102,4 @@ while check = $checks.shift do
   end
   #puts $checks.inspect
 end
-
-cmd = "sha1sum #{$0}"
-sha1sum = `#{cmd}`
-sha1sum = sha1sum.split(/\s+/)[0]
-
-puts
-puts "#{colorize(:underline)}#{colorize(:bright)}Summary#{colorize(:off)}"
-puts "Healthcheck version: #{sha1sum}"
-puts "Magento version: #{$saved[:magento_version]}"
-puts "Kernel version: #{$saved[:kernel_version]}"
-if $saved[:apache_version]
-  puts "Apache version: #{$saved[:apache_version]}"
-end
-if $saved[:nginx]
-  puts "Running nginx"
-end
-if $saved[:memcache_version]
-  puts "memcache version: #{$saved[:memcache_version]}"
-end
-if $saved[:redis_version]
-  puts "Redis version: #{$saved[:redis_version]}"
-end
-if $saved[:php_version]
-  puts "PHP version: #{$saved[:php_version]}"
-end
-if $saved[:mysql_client_api_version]
-  puts "Mysql Client API version: #{$saved[:mysql_client_api_version]}"
-end
-puts "Network interfaces: #{$saved[:network_addrs].join(', ')}"
-puts "Magento roots:"
-puts "\t" + $saved[:magento_roots].join("\n\t")
+showsummary
