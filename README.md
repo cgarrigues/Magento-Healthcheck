@@ -17,9 +17,18 @@ The output of the script include ANSI escape characters.  If you view the output
 ./healthcheck | less -R
 ```
 
+You can also only look at lines that may be of concert with the --quiet flag:
+
 ```bash
-./healthcheck --verbose | include the full contents of all files checked
-./healthcheck --quiet | minimize the output
+
+./healthcheck --quiet
 ```
+
+To send information to Magento support, use the --verbose option and compress the output into a file and attach that file to the ticket.
+
+```bash
+./healthcheck --verbose | bzip2 > $HOSTNAME-health.bz2
+```
+
 
 Updates and additions to the code in the form of Pull Requests are much appreciated.
