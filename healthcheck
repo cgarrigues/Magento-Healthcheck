@@ -647,18 +647,19 @@ class SysCrontab < Crontab
   }
 end
 
-class SysCrontabs < Collection
-  def scan
-    alsoscan [SysCrontab, '/etc/crontab']
-    alsoscan [SysCrontab, '/etc/cron.d/*']
-  end
-end
-
 class UserCrontab < Crontab
   self.matches = {
     /(cron.sh)/ => [[:count, :cron]],
     /(cron.php)/ => [[:flag, "should call cron.sh, not cron.php"]],
   }
+end
+
+class SysCrontabs < Collection
+  def scan
+    alsoscan [SysCrontab, '/etc/crontab']
+    alsoscan [SysCrontab, '/etc/cron.d/*']
+    alsoscan [UserCrontab, '/var/spool/cron/*']
+  end
 end
 
 class WebUser < User
@@ -669,10 +670,10 @@ class WebUser < User
   end
 
   def scan
-    crondir = Pathname.new "/var/spool/cron/"
-    if (cronfile = crondir + userid).exist?
-      alsoscan [UserCrontab, cronfile]
-    end
+#    crondir = Pathname.new "/var/spool/cron/"
+#    if (cronfile = crondir + userid).exist?
+#      alsoscan [UserCrontab, cronfile]
+#    end
   end
 end
 
