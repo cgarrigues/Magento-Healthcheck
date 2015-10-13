@@ -17,7 +17,7 @@ The output of the script include ANSI escape characters.  If you view the output
 ./healthcheck | less -R
 ```
 
-You can also only look at lines that may be of concert with the --quiet flag:
+You can also only look at lines that may be of concern with the --quiet flag:
 
 ```bash
 
