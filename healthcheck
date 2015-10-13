@@ -468,6 +468,7 @@ class Ifconfig < ShellCommand
   self.matches = {
     /^(\S+)\s/ => [[:alsocheck, Ethtool]],
     /inet addr:(\S+)\s/ => [[:collect, :network_addrs]],
+    /inet6 addr:\s*([0-9a-f\:]+)/ => [[:collect, :network_addrs]],
     /errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
     /errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)/ => [["=", 0],["=", 0],["=", 0],["=", 0]],
   }
