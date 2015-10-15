@@ -392,8 +392,12 @@ class ScannableFile < Scannable
         alsoscan([self.class, f])
       end
     else
-      open(filename) do |s|
-        yield s
+      begin
+        open(filename) do |s|
+          yield s
+        end
+      rescue Exception => e
+        printline colorize(:redbg) + e.message + colorize(:off)
       end
     end
   end
@@ -586,13 +590,17 @@ class DocRoot < DocumentRoot
       if etcpath.exist?
         rootpaths.push rootpath
       else
-        Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
-          etcpath = rootpath + dir + "app/etc"
-          if etcpath.exist?
-            rootpaths.push(rootpath + dir)
-          else
-            rootpaths.concat findallrootpaths(rootpath + dir)
+        begin
+          Dir.entries(rootpath).grep(/^[^\.]/) {|f| Pathname.new f}.select {|file| File.directory? rootpath + file}.each do |dir|
+            etcpath = rootpath + dir + "app/etc"
+            if etcpath.exist?
+              rootpaths.push(rootpath + dir)
+            else
+              rootpaths.concat findallrootpaths(rootpath + dir)
+            end
           end
+        rescue Exception => e
+          printline colorize(:redbg) + e.message + colorize(:off)
         end
       end
     end
@@ -624,7 +632,7 @@ end
 class NgConf < NginxConf
   self.matches = {
     /^\s*include\s+(\/\S+);/ => [[:alsocheck, NgConf]],
-    /^\s*set \$MAGE_ROOT\s+(\S+);/ => [[:alsocheck, DocRoot]],
+
   }
 end
 
@@ -1077,12 +1085,18 @@ def showsummary
   end
   puts "Network interfaces: #{$saved[:network_addrs].join(', ')}"
   puts "Magento roots:"
-  puts "\t" + $saved[:magento_roots].join("\n\t")
+  if $saved[:magento_roots]
+    puts "\t" + $saved[:magento_roots].join("\n\t")
+  else
+    puts colorize(:redbg) + "Couldn't find any magento roots" + colorize(:off)
+  end
   if $saved[:cron] != 1
-    puts colorize(:redbg) + "cron.sh is called in #{$saved[:cron]} places." + colorize(:off)
+    puts colorize(:redbg) + "cron.sh is called in #{$saved[:cron] || 0} places." + colorize(:off)
   end
 end
-
+if ENV['USER'] != 'root'
+    puts colorize(:redbg) + "Not running as root.  May not be able to get all info." + colorize(:off)
+end
 while check = $checks.shift do
   if check.is_a? Array
     objclass = check.shift
