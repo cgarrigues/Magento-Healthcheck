@@ -740,6 +740,7 @@ class MagExceptionLog < LogFile
   self.matches = {
     /exception\s'([^']*)' with message '([^']*)'/ => [[:flag], [:flag]],
     /app\/code\/local\/([^\/]+)/ => [[:flag, "not Magento code"]],
+    /app\/code\/community\/([^\/]+)/ => [[:flag, "not Magento code"]],
   }
 end
 
