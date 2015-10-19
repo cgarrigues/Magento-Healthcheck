@@ -537,6 +537,7 @@ class DfHt < ShellCommand
   self.cmd = 'df -hT'
   self.matches = {
     /\s(\d+)\%/ => [["<", 75]],
+    /^([\d\.]+):/ => [[:flag, "NFS Mount"]],
   }
 end
 
