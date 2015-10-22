@@ -655,15 +655,15 @@ end
 
 class SysCrontab < Crontab
   self.matches = {
-    /(cron.sh)/ => [[:count, :cron]],
-    /(cron.php)/ => [[:flag, "should call cron.sh, not cron.php"]],
+    /^[\#]+(cron.sh)/ => [[:count, :cron]],
+    /^[\#]+(cron.php)/ => [[:flag, "should call cron.sh, not cron.php"]],
   }
 end
 
 class UserCrontab < Crontab
   self.matches = {
-    /(cron.sh)/ => [[:count, :cron]],
-    /(cron.php)/ => [[:flag, "should call cron.sh, not cron.php"]],
+    /^[\#]+(cron.sh)/ => [[:count, :cron]],
+    /^[\#]+(cron.php)/ => [[:flag, "should call cron.sh, not cron.php"]],
   }
 end
 
