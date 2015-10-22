@@ -865,11 +865,11 @@ class MysqlCommand < ShellCommand
   
   def openstream
     if password == ''
-      cmd = "mysql -h#{hostname} -u#{username} -e'#{cmd}'"
+      shellcmd = "mysql -h#{hostname} -u#{username} -e'#{cmd}'"
     else
-      cmd = "mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}'"
+      shellcmd = "mysql -h#{hostname} -u#{username} -p'#{password}' -e'#{cmd}'"
     end
-    open("|#{cmd} 2>&1") do |s|
+    open("|#{shellcmd} 2>&1") do |s|
       yield s
     end
   end
