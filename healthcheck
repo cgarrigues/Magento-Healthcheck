@@ -419,6 +419,7 @@ class Dmesg < ShellCommand
   self.cmd = 'dmesg'
   self.matches = {
     /^(SELinux):  Initializing.$/ => [[:alsocheck, Selinux]],
+    /(segfault)/ => [[:flag]],
   }
 end
 
