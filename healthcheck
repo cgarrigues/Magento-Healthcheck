@@ -641,6 +641,10 @@ class LogFile < ScannableFile
 end
 
 class MysqlLog < LogFile
+  self.matches = {
+    /^(\d+\s+\d+:\d+:\d+).*(error)/i => [[:flag, "YYMMDD HH:MM:SS"], [:flag]],
+    /^(\d+\s+\d+:\d+:\d+).*(Database was not shut down normally)/ => [[:flag, "YYMMDD HH:MM:SS"], [:flag]],
+  }
 end
 
 class User < Collection
@@ -824,7 +828,7 @@ class PhpI < ShellCommand
     [:section, "Core",     /^open_basedir => (.+) => (.+)/]              => [["eq", "no value"], ["eq", "no value"]],
     [:section, "Core",     /^safe_mode => (.+) => (.+)/]                 => [["eq", "Off"], ["eq", "Off"]],
     [:section, "memcache", /^Version => (\S+)/]                          => [["eq", "3.0.5", :save, :memcache_version]],
-    [:section, "mysql",    /^Client API version => (\S+)/]               => [[:save, :mysql_client_api_version]],
+    [:section, "mysql",    /^Client API version => (.+)/]               => [[:save, :mysql_client_api_version]],
   }
 end
 
