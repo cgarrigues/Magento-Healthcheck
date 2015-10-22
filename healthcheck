@@ -757,6 +757,9 @@ class Messages < LogFile
   def initialize
     super('/var/log/messages')
   end
+  self.matches = {
+    /(ERROR)/ => [[:flag]]
+  }
 end
 
 class ApacheFile < ConfFile
