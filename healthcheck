@@ -336,7 +336,7 @@ class Redis < Cache
       puts colorize(:invert) + "Redis is on local host. Up to 50% performance boost if switched to Unix sockets." + colorize(:off)
     end
     Sysctl.matches = {
-      %r(vm.overcommit_memory = (\d+)) => [{"=" => 1,
+      %r(vm.overcommit_memory = (\d+)) => [{"="   => 1,
                                             :note => "Without overcommit_memory set, redis background save may fail under low memory conditions."}],
     }
   end
@@ -345,11 +345,11 @@ end
 class Sysctl < ShellCommand
   self.cmd = 'sysctl -a'
   self.matches = {
-    %r(net.ipv4.tcp_tw_recycle = (\d+))  => [{"=" => 1,
+    %r(net.ipv4.tcp_tw_recycle = (\d+))  => [{"="   => 1,
                                               :note => "tcp_tw_recycle = 1 will minimze exceess processes in TIME_WAIT or SYN_RECV."}],
-    %r(net.ipv4.tcp_tw_reuse = (\d+))    => [{"=" => 1,
+    %r(net.ipv4.tcp_tw_reuse = (\d+))    => [{"="   => 1,
                                               :note => "tcp_tw_reuse = 1 will minimze exceess processes in TIME_WAIT or SYN_RECV."}],
-    %r(net.ipv4.tcp_fin_timeout = (\d+)) => [{"<=" => 10,
+    %r(net.ipv4.tcp_fin_timeout = (\d+)) => [{"<="  => 10,
                                               :note => "a low tcp_fin_timeout will minimze exceess processes in TIME_WAIT or SYN_RECV."}],
   }
 end
