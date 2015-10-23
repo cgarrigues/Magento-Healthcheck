@@ -162,8 +162,7 @@ class Scannable
             testpairs = tests[i-1].dup
             endinsert = nil
             state = nil
-            while test = testpairs.shift
-              value = testpairs.shift
+            testpairs.each do |test, value|
               setstate = okay(matchdata[i], test, value)
               if setstate == :note
                 unless state
@@ -307,16 +306,16 @@ end
 class Memcached < Cache
   self.cmd = "stats"
   self.matches = {
-    %r(STAT evictions (\d+)) => [["=", 0]],
+    %r(STAT evictions (\d+)) => [{"=" => 0}],
   }
 end
 
 class Redis < Cache
   self.cmd = 'info'
   self.matches = {
-    %r(redis_version:(\s+))     => [[:save, :redis_version]],
-    %r(evicted_keys:(\d+))      => [["=", 0]],
-    %r(connected_clients:(\d+)) => [[">", 0]],
+    %r(redis_version:(\s+))     => [{:save => :redis_version}],
+    %r(evicted_keys:(\d+))      => [{"="   => 0}],
+    %r(connected_clients:(\d+)) => [{">"   => 0}],
   }
   
   def initialize(*args)
@@ -325,7 +324,7 @@ class Redis < Cache
       puts colorize(:invert) + "Redis is on local host. Up to 50% performance boost if switched to Unix sockets." + colorize(:off)
     end
     Sysctl.matches = {
-      %r(vm.overcommit_memory = (\d+)) => [["=", 1]],
+      %r(vm.overcommit_memory = (\d+)) => [{"=" => 1}],
     }
   end
 end
@@ -333,18 +332,18 @@ end
 class Sysctl < ShellCommand
   self.cmd = 'sysctl -a'
   self.matches = {
-    %r(net.ipv4.tcp_tw_recycle = (\d+)) => [["=", 1]],
-    %r(net.ipv4.tcp_tw_reuse = (\d+)) => [["=", 1]],
-    %r(net.ipv4.tcp_fin_timeout = (\d+)) => [["=", 10]],
+    %r(net.ipv4.tcp_tw_recycle = (\d+))  => [{"=" => 1}],
+    %r(net.ipv4.tcp_tw_reuse = (\d+))    => [{"=" => 1}],
+    %r(net.ipv4.tcp_fin_timeout = (\d+)) => [{"=" => 10}],
   }
 end
 
 class Netstat < ShellCommand
   self.cmd = 'netstat -nap'
   self.matches = {
-    %r(^Proto) => :heading,
-    %r((TIME_WAIT)) => [[:count, :time_wait]],
-    %r((SYN_RECV)) => [[:count, :syn_recv]],
+    %r(^Proto)      => :heading,
+    %r((TIME_WAIT)) => [{:count => :time_wait}],
+    %r((SYN_RECV))  => [{:count => :syn_recv}],
   }
 
   def process_saved
@@ -368,9 +367,9 @@ end
 class Iostat < ShellCommand
   self.cmd = 'iostat -dx 3 6'
   self.matches = {
-    %r(^Device) => :heading,
+    %r(^Device)                                                                                                              => :heading,
     %r(^\S+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+[\d\.]+\s+([\d\.]+)\s+[\d\.]+\s+[\d\.]+) => [
-      ["<", 100],
+      {"<" => 100},
     ]
   }
 end
@@ -411,15 +410,15 @@ class Selinux < ConfFile
     "/etc/selinux/config"
   end
   self.matches = {
-    %r(^SELINUX=(\w+)) => [["ne", "enforcing"]],
+    %r(^SELINUX=(\w+)) => [{"ne" => "enforcing"}],
   }
 end
 
 class Dmesg < ShellCommand
   self.cmd = 'dmesg'
   self.matches = {
-    %r(^(SELinux):  Initializing.$) => [[:alsocheck, Selinux]],
-    %r((segfault)) => [[:flag]],
+    %r(^(SELinux):  Initializing.$) => [{:alsocheck => Selinux}],
+    %r((segfault))                  => [{:flag => nil}],
   }
 end
 
@@ -428,7 +427,8 @@ class Vmstat < ShellCommand
   self.matches = {
     %r(\sr\s+b\s) => :heading,
     #     r     b   swpd  free  buff  cache   si      so
-    %r(^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)) => [["=", 0],["=", 0]],
+    %r(^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)) => [{"=" => 0},
+                                                                  {"=" => 0}],
   }
 end
 
@@ -439,22 +439,24 @@ end
 class Free < ShellCommand
   self.cmd = 'free -mo'
   self.matches = {
-    %r(total) => :heading,
-    %r(Swap:\s+\d+\s+(\d+)) => [["=", 0]],
+    %r(total)               => :heading,
+    %r(Swap:\s+\d+\s+(\d+)) => [{"=" => 0}],
   }
 end
 
 class Uptime < ShellCommand
   self.cmd = 'uptime'
   self.matches = {
-    %r(load average: ([\d\.]+), ([\d\.]+), ([\d\.]+)) => [["<", 100], ["<", 100], ["<", 100]],
+    %r(load average: ([\d\.]+), ([\d\.]+), ([\d\.]+)) => [{"<" => 100},
+                                                          {"<" => 100},
+                                                          {"<" => 100}],
   }
 end
 
 class Last < ShellCommand
   self.cmd = 'last'
   self.matches = {
-    %r(^reboot.*(\w\w\w \w\w\w +\d+ \d\d:\d\d - \d\d\:\d\d)) => [[:okay]],
+    %r(^reboot.*(\w\w\w \w\w\w +\d+ \d\d:\d\d - \d\d\:\d\d)) => [{:okay => nil}],
   }
 end
 
@@ -464,18 +466,24 @@ class Ethtool < ShellCommand
     self.class.cmd = "ethtool #{interface}"
   end
   self.matches = {
-    %r(Link detected: (\w+)) => [["=", "yes"]],
+    %r(Link detected: (\w+)) => [{"=" => "yes"}],
   }
 end
 
 class Ifconfig < ShellCommand
   self.cmd = 'ifconfig -a'
   self.matches = {
-    %r(^(\S+)\s)                                                => [[:alsocheck, Ethtool]],
-    %r(inet addr:(\S+)\s)                                       => [[:collect, :network_addrs]],
-    %r(inet6 addr:\s*([0-9a-f\:]+))                             => [[:collect, :network_addrs]],
-    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+))   => [["=", 0],["=", 0],["=", 0],["=", 0]],
-    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)) => [["=", 0],["=", 0],["=", 0],["=", 0]],
+    %r(^(\S+)\s)                                                => [{:alsocheck => Ethtool}],
+    %r(inet addr:(\S+)\s)                                       => [{:collect => :network_addrs}],
+    %r(inet6 addr:\s*([0-9a-f\:]+))                             => [{:collect => :network_addrs}],
+    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+))   => [{"=" => 0},
+                                                                    {"=" => 0},
+                                                                    {"=" => 0},
+                                                                    {"=" => 0}],
+    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)) => [{"=" => 0},
+                                                                    {"=" => 0},
+                                                                    {"=" => 0},
+                                                                    {"=" => 0}],
   }
 end
 
@@ -489,7 +497,7 @@ end
 class Lsmod < ShellCommand
   self.cmd = 'lsmod'
   self.matches = {
-    %r(^(ip_tables)) => [[:alsocheck, Iptables]],
+    %r(^(ip_tables)) => [{:alsocheck => Iptables}],
   }
 end
 
@@ -523,29 +531,29 @@ end
 
 class RedisConf < ConfFile
   self.matches = {
-    %r(^\s*(maxmemory)) => [[:flag, "Don't set maxmemory"]],
+    %r(^\s*(maxmemory)) => [{:flag => "Don't set maxmemory"}],
   }
 end
 
 class UnameA < ShellCommand
   self.cmd = 'uname -a'
   self.matches = {
-    %r(\s\S+\s(\S+)) => [[:save, :kernel_version]]
+    %r(\s\S+\s(\S+)) => [{:save => :kernel_version}]
   }
 end
 
 class DfHt < ShellCommand
   self.cmd = 'df -hT'
   self.matches = {
-    %r(\s(\d+)\%)   => [["<", 75]],
-    %r(^([\d\.]+):) => [[:flag, "NFS Mount"]],
+    %r(\s(\d+)\%)   => [{"<"   => 75}],
+    %r(^([\d\.]+):) => [{:flag => "NFS Mount"}],
   }
 end
 
 class DfHit < ShellCommand
   self.cmd = 'df -hiT'
   self.matches = {
-    %r(\s(\d+)\%) => [["<", 75]],
+    %r(\s(\d+)\%) => [{"<" => 75}],
   }
 end
 
@@ -633,7 +641,7 @@ end
 
 class NgConf < NginxConf
   self.matches = {
-    %r(^\s*include\s+(/\S+);) => [[:alsocheck, NgConf]],
+    %r(^\s*include\s+(/\S+);) => [{:alsocheck => NgConf}],
 
   }
 end
@@ -643,8 +651,10 @@ end
 
 class MysqlLog < LogFile
   self.matches = {
-    %r(^(\d+\s+\d+:\d+:\d+).*(error))i                              => [[:flag, "YYMMDD HH:MM:SS"], [:flag]],
-    %r(^(\d+\s+\d+:\d+:\d+).*(Database was not shut down normally)) => [[:flag, "YYMMDD HH:MM:SS"], [:flag]],
+    %r(^(\d+\s+\d+:\d+:\d+).*(error))i                              => [{:flag => "YYMMDD HH:MM:SS"},
+                                                                        {:flag => nil}],
+    %r(^(\d+\s+\d+:\d+:\d+).*(Database was not shut down normally)) => [{:flag => "YYMMDD HH:MM:SS"},
+                                                                        {:flag => nil}],
   }
 end
 
@@ -656,15 +666,15 @@ end
 
 class SysCrontab < Crontab
   self.matches = {
-    %r(^[\#]+(cron.sh))  => [[:count, :cron]],
-    %r(^[\#]+(cron.php)) => [[:flag, "should call cron.sh, not cron.php"]],
+    %r(^[\#]+(cron.sh))  => [{:count => :cron}],
+    %r(^[\#]+(cron.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
   }
 end
 
 class UserCrontab < Crontab
   self.matches = {
-    %r(^[\#]+(cron.sh))  => [[:count, :cron]],
-    %r(^[\#]+(cron.php)) => [[:flag, "should call cron.sh, not cron.php"]],
+    %r(^[\#]+(cron.sh))  => [{:count => :cron}],
+    %r(^[\#]+(cron.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
   }
 end
 
@@ -694,14 +704,19 @@ end
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    %r(root.*\s([/a-z]*apache2?))         => [[:alsocheck, Apache, :save, :apache]],
-    %r((\w+).*\s[/a-z]*apache2?)          => [[:alsocheck, WebUser]],
-    %r(root.*\s([/a-z]*httpd))            => [[:alsocheck, Apache, :save, :apache]],
-    %r((\w+).*\s[/a-z]*httpd)             => [[:alsocheck, WebUser]],
-    %r(nginx: master process .* -c (\S*)) => [[:alsocheck, NgConf, :save, :nginx]],
-    %r((memcached).*-m (\d+))             => [[:save, :memcache], [">", 1024]],
-    %r(redis-server\s+(\S+))              => [[:alsocheck, RedisConf, :save, :redis]],
-    %r(mysqld.*--log-error=([/\.\w]+))    => [[:alsocheck, MysqlLog]],
+    %r(root.*\s([/a-z]*apache2?))         => [{:alsocheck => Apache,
+                                               :save      => :apache}],
+    %r((\w+).*\s[/a-z]*apache2?)          => [{:alsocheck => WebUser}],
+    %r(root.*\s([/a-z]*httpd))            => [{:alsocheck => Apache,
+                                               :save      => :apache}],
+    %r((\w+).*\s[/a-z]*httpd)             => [{:alsocheck => WebUser}],
+    %r(nginx: master process .* -c (\S*)) => [{:alsocheck => NgConf,
+                                               :save      => :nginx}],
+    %r((memcached).*-m (\d+))             => [{:save      => :memcache},
+                                              {">"        => 1024}],
+    %r(redis-server\s+(\S+))              => [{:alsocheck => RedisConf,
+                                               :save      => :redis}],
+    %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
   }
   
 end
@@ -713,9 +728,9 @@ class Httpdt < ShellCommand
   end
 
   self.matches = {
-    %r((.*warn.*))  => [[:flag, "!!!! WARNING !!!!"]],
-    %r((.*error.*)) => [[:flag, "!!!!!! ERROR !!!!!!"]],
-    %r((Syntax OK)) => [[:okay]],
+    %r((.*warn.*))  => [{:flag => "!!!! WARNING !!!!"}],
+    %r((.*error.*)) => [{:flag => "!!!!!! ERROR !!!!!!"}],
+    %r((Syntax OK)) => [{:okay => nil}],
   }
 end
 
@@ -725,10 +740,10 @@ class HttpdV < ShellCommand
   end
 
   self.matches = {
-    %r(Server MPM:\s+(\S+))             => [[:okay]],
-    %r(Server version:\s*Apache/(\S+))  => [[:save, :apache_version]],
-    %r(^ -D HTTPD_ROOT="(\S+)")         => [[:save, :httpdroot]],
-    %r(^ -D SERVER_CONFIG_FILE="(\S+)") => [[:save, :serverconfigfile]],
+    %r(Server MPM:\s+(\S+))             => [{:okay => nil}],
+    %r(Server version:\s*Apache/(\S+))  => [{:save => :apache_version}],
+    %r(^ -D HTTPD_ROOT="(\S+)")         => [{:save => :httpdroot}],
+    %r(^ -D SERVER_CONFIG_FILE="(\S+)") => [{:save => :serverconfigfile}],
   }
 
   def also_check
@@ -744,9 +759,10 @@ end
 
 class MagExceptionLog < LogFile
   self.matches = {
-    %r(exception\s'([^']*)' with message '([^']*)') => [[:flag], [:flag]],
-    %r(app/code/local/([^/]+))                      => [[:flag, "not Magento code"]],
-    %r(app/code/community/([^/]+))                  => [[:flag, "not Magento code"]],
+    %r(exception\s'([^']*)' with message '([^']*)') => [{:flag => nil},
+                                                        {:flag => nil}],
+    %r(app/code/local/([^/]+))                      => [{:flag => "not Magento code"}],
+    %r(app/code/community/([^/]+))                  => [{:flag => "not Magento code"}],
   }
 end
 
@@ -758,7 +774,7 @@ class Messages < LogFile
     super('/var/log/messages')
   end
   self.matches = {
-    %r((ERROR)) => [[:flag]]
+    %r((ERROR)) => [{:flag => nil}]
   }
 end
 
@@ -774,7 +790,7 @@ class ApacheFile < ConfFile
   end
 
   self.matches = {
-    %r(^\s*DocumentRoot\s+(\S+)) => [[:alsocheck, DocRoot]],
+    %r(^\s*DocumentRoot\s+(\S+)) => [{:alsocheck => DocRoot}],
   }
 end
 
@@ -785,24 +801,26 @@ class HttpdS < ShellCommand
   end
 
   self.matches = {
-    %r(default server (\S+)\s+\(([^:]+):) => [[:okay], [:alsocheck, ApacheFile]],
-    %r(namevhost (\S+)\s+\(([^:]+):)      => [[:okay], [:alsocheck, ApacheFile]],
+    %r(default server (\S+)\s+\(([^:]+):) => [{:okay => nil},
+                                              {:alsocheck => ApacheFile}],
+    %r(namevhost (\S+)\s+\(([^:]+):)      => [{:okay => nil},
+                                              {:alsocheck => ApacheFile}],
   }
 end
 
 class PhpV < ShellCommand
   self.cmd = 'php -v'
   self.matches = {
-    %r(PHP (\d+\.\d+)) => [["ne", "5.7"]],
+    %r(PHP (\d+\.\d+)) => [{"ne" => "5.7"}],
   }
 end
 
 class PhpM < ShellCommand
   self.cmd = 'php -m'
   self.matches = {
-    %r(^(bcmath)$)   => [[:save, :bcmath]],
-    %r(^(memcache)$) => [[:save, :cache]],
-    %r(^(redis)$)    => [[:save, :cache]],
+    %r(^(bcmath)$)   => [{:save => :bcmath}],
+    %r(^(memcache)$) => [{:save => :cache}],
+    %r(^(redis)$)    => [{:save => :cache}],
   }
 
   def process_saved
@@ -818,21 +836,33 @@ end
 class PhpI < ShellCommand
   self.cmd = 'php -i'
   self.matches = {
-                           %r(^([a-z]+)$)i                                 => [[:save, :section]],
-    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]  => [["=", 1440], ["=", 1440]],
-    [:section, "session",  %r(^session.gc_probability => (\d+) => (\d+))]  => [["=", 1], ["=", 1]],
-    [:section, "session",  %r(^session.cookie_lifetime => (\d+) => (\d+))] => [["=", 0], ["=", 0]],
-    [:section, "Core",     %r(^PHP Version => (\S+))]                      => [[:save, :php_version]],
-    [:section, "Core",     %r(^memory_limit => (\d+)M => (\d+)M)]          => [[">=", 256], [">=", 256]],
-    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]      => [["=", 18000], ["=", 18000]],
-    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [[">=", 2000], [">=", 2000]],
-    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [["eq", "no value"], ["eq", "no value"]],
-    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]          => [["eq", "no value"], ["eq", "no value"]],
-    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]         => [["eq", "no value"], ["eq", "no value"]],
-    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]              => [["eq", "no value"], ["eq", "no value"]],
-    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                 => [["eq", "Off"], ["eq", "Off"]],
-    [:section, "memcache", %r(^Version => (\S+))]                           => [["eq", "3.0.5", :save, :memcache_version]],
-    [:section, "mysql",    %r(^Client API version => (.+))]                => [[:save, :mysql_client_api_version]],
+                           %r(^([a-z]+)$)i                                 => [{:save => :section}],
+    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]  => [{"="   => 1440},
+                                                                               {"="   => 1440}],
+    [:section, "session",  %r(^session.gc_probability => (\d+) => (\d+))]  => [{"="   => 1},
+                                                                               {"="   => 1}],
+    [:section, "session",  %r(^session.cookie_lifetime => (\d+) => (\d+))] => [{"="   => 0},
+                                                                               {"="   => 0}],
+    [:section, "Core",     %r(^PHP Version => (\S+))]                      => [{:save => :php_version}],
+    [:section, "Core",     %r(^memory_limit => (\d+)M => (\d+)M)]          => [{">="  => 256},
+                                                                               {">="  => 256}],
+    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]      => [{"="   => 18000},
+                                                                               {"="   => 18000}],
+    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [{">="  => 2000},
+                                                                               {">="  => 2000}],
+    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [{"eq"  => "no value"},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]          => [{"eq"  => "no value"},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]         => [{"eq"  => "no value"},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]              => [{"eq"  => "no value"},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                 => [{"eq"  => "Off"},
+                                                                               {"eq"  => "Off"}],
+    [:section, "memcache", %r(^Version => (\S+))]                          => [{"eq"  => "3.0.5",
+                                                                                :save => :memcache_version}],
+    [:section, "mysql",    %r(^Client API version => (.+))]                => [{:save => :mysql_client_api_version}],
   }
 end
 
@@ -850,7 +880,7 @@ class HttpdM < ShellCommand
   end
 
   self.matches = {
-    %r((php5_module)) => [[:alsocheck, Php]]
+    %r((php5_module)) => [{:alsocheck => Php}]
   }
 end
 
@@ -886,41 +916,43 @@ end
 class MysqlStatus < MysqlCommand
   self.cmd = 'show global status'
   self.matches = {
-    %r(Aborted_clients\s(\S+))    => [["<", 1000]],
-    %r(Aborted_connects\s(\S+))   => [["<", 1000]],
-    %r(Table_locks_waited\s(\S+)) => [["<", 100]],
-    %r((Access denied.*))         => [[:flag, "Password issue?"]],
+    %r(Aborted_clients\s(\S+))    => [{"<" =>   1000}],
+    %r(Aborted_connects\s(\S+))   => [{"<" =>   1000}],
+    %r(Table_locks_waited\s(\S+)) => [{"<" =>   100}],
+    %r((Access denied.*))         => [{:flag => "Password issue?"}],
   }
 end
 
 class MysqlVariables < MysqlCommand
   self.cmd = 'show global variables'
   self.matches = {
-    %r(innodb_log_file_size\s(\S+)) => [[">", 128*1024*1024]],
-    %r(max_heap_table_size\s(\S+))  => [[">", 128*1024*1024, :save, :heap_table_size]],
-    %r(tmp_table_size\s(\S+))       => [[">", 128*1024*1024, "=", :heap_table_size]],
-    %r((Access denied.*))           => [[:flag, "Password issue?"]],
+    %r(innodb_log_file_size\s(\S+)) => [{">"   => 128*1024*1024}],
+    %r(max_heap_table_size\s(\S+))  => [{">"   => 128*1024*1024,
+                                         :save => :heap_table_size}],
+    %r(tmp_table_size\s(\S+))       => [{">"   => 128*1024*1024,
+                                         "="   => :heap_table_size}],
+    %r((Access denied.*))           => [{:flag => "Password issue?"}],
   }
 end
 
 class MysqlInnodbStatus < MysqlCommand
   self.cmd = 'show engine innodb status\\G'
   self.matches = {
-    %r((Access denied.*)) => [[:flag, "Password issue?"]],
+    %r((Access denied.*)) => [{:flag => "Password issue?"}],
   }
 end
 
 class MysqlProcessList < MysqlCommand
   self.cmd = 'show processlist'
   self.matches = {
-    %r((Access denied.*)) => [[:flag, "Password issue?"]],
+    %r((Access denied.*)) => [{:flag => "Password issue?"}],
   }
 end
 
 class MysqlSlaveStatus < MysqlCommand
   self.cmd = 'show slave status'
   self.matches = {
-    %r((Access denied.*)) => [[:flag, "Password issue?"]],
+    %r((Access denied.*)) => [{:flag => "Password issue?"}],
   }
 end
 
