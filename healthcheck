@@ -1104,7 +1104,7 @@ def showsummary
     puts colorize(:redbg) + "cron.sh is called in #{$saved[:cron] || 0} places." + colorize(:off)
   end
 end
-if ENV['USER'] != 'root'
+if Process.uid != 0
     puts colorize(:redbg) + "Not running as root.  May not be able to get all info." + colorize(:off)
 end
 while check = $checks.shift do
