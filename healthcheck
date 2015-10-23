@@ -162,34 +162,42 @@ class Scannable
             testpairs = tests[i-1].dup
             endinsert = nil
             state = nil
+            note = nil
             testpairs.each do |test, value|
-              setstate = okay(matchdata[i], test, value)
-              if setstate == :note
-                unless state
-                  endinsert = colorize(:off) + colorize(:bright)
-                  state = :note
-                end
-              elsif setstate
-                unless state == :bad
-                  endinsert = colorize(:off) + colorize(:bright)
-                  state ||= :good
-                end
+              if test == :note
+                  note = value
               else
-                if test == :flag
-                  if value
-                    endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
-                  else
+                setstate = okay(matchdata[i], test, value)
+                if setstate == :note
+                  unless state
                     endinsert = colorize(:off) + colorize(:bright)
+                    state = :note
+                  end
+                elsif setstate
+                  unless state == :bad
+                    endinsert = colorize(:off) + colorize(:bright)
+                    state ||= :good
                   end
                 else
-                  endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+                  if test == :flag
+                    if value
+                      endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+                    else
+                      endinsert = colorize(:off) + colorize(:bright)
+                    end
+                  else
+                    endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+                  end
+                  state = :bad
                 end
-                state = :bad
               end
             end
             if state == :bad
               begininsert = colorize(:redbg)
               showline = true
+              if note
+                $notes.push note
+              end
             elsif state == :good
               begininsert = colorize(:greenfg)
               showline = false
@@ -217,6 +225,7 @@ class Scannable
   end
 
   def scan
+    $notes = []
     printheader
     openstream do |s|
       while (line = s.gets)
@@ -227,6 +236,9 @@ class Scannable
     end
     if self.class.matches == {}
       printline colorize(:invert) + 'No match rules defined yet' + colorize(:off)
+    end
+    $notes.each do |note|
+      puts colorize(:invert) + note + colorize(:off)
     end
   end
 end
@@ -324,7 +336,8 @@ class Redis < Cache
       puts colorize(:invert) + "Redis is on local host. Up to 50% performance boost if switched to Unix sockets." + colorize(:off)
     end
     Sysctl.matches = {
-      %r(vm.overcommit_memory = (\d+)) => [{"=" => 1}],
+      %r(vm.overcommit_memory = (\d+)) => [{"=" => 1,
+                                            :note => "With overcommit_memory at zero, redis background save may fail under low memory conditions."}],
     }
   end
 end
@@ -332,9 +345,12 @@ end
 class Sysctl < ShellCommand
   self.cmd = 'sysctl -a'
   self.matches = {
-    %r(net.ipv4.tcp_tw_recycle = (\d+))  => [{"=" => 1}],
-    %r(net.ipv4.tcp_tw_reuse = (\d+))    => [{"=" => 1}],
-    %r(net.ipv4.tcp_fin_timeout = (\d+)) => [{"=" => 10}],
+    %r(net.ipv4.tcp_tw_recycle = (\d+))  => [{"=" => 1,
+                                              :note => "tcp_tw_recycle = 1 will minimze exceess processes in TIME_WAIT or SYN_RECV."}],
+    %r(net.ipv4.tcp_tw_reuse = (\d+))    => [{"=" => 1,
+                                              :note => "tcp_tw_reuse = 1 will minimze exceess processes in TIME_WAIT or SYN_RECV."}],
+    %r(net.ipv4.tcp_fin_timeout = (\d+)) => [{"<=" => 10,
+                                              :note => "a low tcp_fin_timeout will minimze exceess processes in TIME_WAIT or SYN_RECV."}],
   }
 end
 
@@ -846,19 +862,26 @@ class PhpI < ShellCommand
     [:section, "Core",     %r(^PHP Version => (\S+))]                      => [{:save => :php_version}],
     [:section, "Core",     %r(^memory_limit => (\d+)M => (\d+)M)]          => [{">="  => 256},
                                                                                {">="  => 256}],
-    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]      => [{"="   => 18000},
+    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]      => [{"="   => 18000,
+                                                                                :note => "max_execution_time should be set very high to assure that indexing completes."},
                                                                                {"="   => 18000}],
-    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [{">="  => 2000},
+    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [{">="  => 2000,
+                                                                                :note => "max_input_vars should be from 2000 to 5000 (or even more if needed)"},
                                                                                {">="  => 2000}],
-    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [{"eq"  => "no value"},
+    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [{"eq"  => "no value",
+                                                                                :note => "auto_prepend_file may cause issues"},
                                                                                {"eq"  => "no value"}],
-    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]          => [{"eq"  => "no value"},
+    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]          => [{"eq"  => "no value",
+                                                                                :note => "auto_append_file may cause issues"},
                                                                                {"eq"  => "no value"}],
-    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]         => [{"eq"  => "no value"},
+    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]         => [{"eq"  => "no value",
+                                                                                :note => "disable_functions may cause issues"},
                                                                                {"eq"  => "no value"}],
-    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]              => [{"eq"  => "no value"},
+    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]              => [{"eq"  => "no value",
+                                                                                :note => "open_basedir is not supported."},
                                                                                {"eq"  => "no value"}],
-    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                 => [{"eq"  => "Off"},
+    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                 => [{"eq"  => "Off",
+                                                                                :note => "safe_mode is not supported."},
                                                                                {"eq"  => "Off"}],
     [:section, "memcache", %r(^Version => (\S+))]                          => [{"eq"  => "3.0.5",
                                                                                 :save => :memcache_version}],
