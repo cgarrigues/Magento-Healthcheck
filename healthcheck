@@ -337,7 +337,7 @@ class Redis < Cache
     end
     Sysctl.matches = {
       %r(vm.overcommit_memory = (\d+)) => [{"=" => 1,
-                                            :note => "With overcommit_memory at zero, redis background save may fail under low memory conditions."}],
+                                            :note => "Without overcommit_memory set, redis background save may fail under low memory conditions."}],
     }
   end
 end
