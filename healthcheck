@@ -433,8 +433,10 @@ end
 class Dmesg < ShellCommand
   self.cmd = 'dmesg'
   self.matches = {
-    %r(^(SELinux):  Initializing.$) => [{:alsocheck => Selinux}],
-    %r((segfault))                  => [{:flag => nil}],
+    %r(^(SELinux):  Initializing.$) => [{:alsocheck => Selinux,
+                                         :note => "SELinux being enabled and not properly configured may break many things."}],
+    %r((segfault))                  => [{:flag => nil,
+                                         :note => "Any segfaulting process should be understood."}],
   }
 end
 
@@ -443,8 +445,10 @@ class Vmstat < ShellCommand
   self.matches = {
     %r(\sr\s+b\s) => :heading,
     #     r     b   swpd  free  buff  cache   si      so
-    %r(^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)) => [{"=" => 0},
-                                                                  {"=" => 0}],
+    %r(^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)) => [{"="   => 0,
+                                                                   :note => "You are swapping.  Do you need more memory?"},
+                                                                  {"="   => 0,
+                                                                   :note => "You are swapping.  Do you need more memory?"}],
   }
 end
 
@@ -456,16 +460,20 @@ class Free < ShellCommand
   self.cmd = 'free -mo'
   self.matches = {
     %r(total)               => :heading,
-    %r(Swap:\s+\d+\s+(\d+)) => [{"=" => 0}],
+    %r(Swap:\s+\d+\s+(\d+)) => [{"=" => 0,
+                                 :note => "Swap non-zero indicates that swapping has occured in the past.  If this is small, it may not be an issue; if it's large, then something nasty happened sometime since the last reboot."}],
   }
 end
 
 class Uptime < ShellCommand
   self.cmd = 'uptime'
   self.matches = {
-    %r(load average: ([\d\.]+), ([\d\.]+), ([\d\.]+)) => [{"<" => 100},
-                                                          {"<" => 100},
-                                                          {"<" => 100}],
+    %r(load average: ([\d\.]+), ([\d\.]+), ([\d\.]+)) => [{"<" => 100,
+                                                           :note => "The load overage is unually high."},
+                                                          {"<" => 100,
+                                                           :note => "The load overage is unually high."},
+                                                          {"<" => 100,
+                                                           :note => "The load overage is unually high."}],
   }
 end
 
@@ -492,14 +500,22 @@ class Ifconfig < ShellCommand
     %r(^(\S+)\s)                                                => [{:alsocheck => Ethtool}],
     %r(inet addr:(\S+)\s)                                       => [{:collect => :network_addrs}],
     %r(inet6 addr:\s*([0-9a-f\:]+))                             => [{:collect => :network_addrs}],
-    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+))   => [{"=" => 0},
-                                                                    {"=" => 0},
-                                                                    {"=" => 0},
-                                                                    {"=" => 0}],
-    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)) => [{"=" => 0},
-                                                                    {"=" => 0},
-                                                                    {"=" => 0},
-                                                                    {"=" => 0}],
+    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+))   => [{"=" => 0,
+                                                                     :note => "Network errors may indicate physical issues."},
+                                                                    {"=" => 0,
+                                                                     :note => "Dropped packets may indicate physical issues."},
+                                                                    {"=" => 0,
+                                                                     :note => "Network overruns may indicate physical issues."},
+                                                                    {"=" => 0,
+                                                                     :note => "Framing errors may indicate physical issues."}],
+    %r(errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)) => [{"=" => 0,
+                                                                     :note => "Network errors may indicate physical issues."},
+                                                                    {"=" => 0,
+                                                                     :note => "Dropped packets may indicate physical issues."},
+                                                                    {"=" => 0,
+                                                                     :note => "Network overruns may indicate physical issues."},
+                                                                    {"=" => 0,
+                                                                     :note => "Framing errors may indicate physical issues."}],
   }
 end
 
@@ -562,7 +578,8 @@ class DfHt < ShellCommand
   self.cmd = 'df -hT'
   self.matches = {
     %r(\s(\d+)\%)   => [{"<"   => 75}],
-    %r(^([\d\.]+):) => [{:flag => "NFS Mount"}],
+    %r(^([\d\.]+):) => [{:flag => "NFS Mount",
+                         :note => "An NFS mounted filesystem isn't necessarily an issue, but if magento is running from this partition, make certain it's performant."}],
   }
 end
 
@@ -776,9 +793,12 @@ end
 class MagExceptionLog < LogFile
   self.matches = {
     %r(exception\s'([^']*)' with message '([^']*)') => [{:flag => nil},
-                                                        {:flag => nil}],
-    %r(app/code/local/([^/]+))                      => [{:flag => "not Magento code"}],
-    %r(app/code/community/([^/]+))                  => [{:flag => "not Magento code"}],
+                                                        {:flag => nil,
+                                                         :note => "Investigate this exception."}],
+    %r(app/code/local/([^/]+))                      => [{:flag => "not Magento code",
+                                                         :note => "local code is out of scope for magento support."}],
+    %r(app/code/community/([^/]+))                  => [{:flag => "not Magento code",
+                                                         :note => "community code is out of scope for magento support."}],
   }
 end
 
@@ -949,11 +969,13 @@ end
 class MysqlVariables < MysqlCommand
   self.cmd = 'show global variables'
   self.matches = {
-    %r(innodb_log_file_size\s(\S+)) => [{">"   => 128*1024*1024}],
+    %r(innodb_log_file_size\s(\S+)) => [{">"   => 128*1024*1024,
+                                         :note => "innodb_log_file_size should be >128MB."}],
     %r(max_heap_table_size\s(\S+))  => [{">"   => 128*1024*1024,
                                          :save => :heap_table_size}],
     %r(tmp_table_size\s(\S+))       => [{">"   => 128*1024*1024,
-                                         "="   => :heap_table_size}],
+                                         "="   => :heap_table_size,
+                                         :note => "tmp_table_size and max_heap_table_size should both have the same value and should both be >128MB."}],
     %r((Access denied.*))           => [{:flag => "Password issue?"}],
   }
 end
