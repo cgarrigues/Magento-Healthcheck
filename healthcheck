@@ -237,9 +237,11 @@ class Scannable
     if self.class.matches == {}
       printline colorize(:invert) + 'No match rules defined yet' + colorize(:off)
     end
+    print "[47;30m[0K"
     $notes.each do |note|
-      puts colorize(:invert) + note + colorize(:off)
+      puts note
     end
+    print colorize(:off) + "[0K"
   end
 end
 
@@ -1148,7 +1150,9 @@ def showsummary
   sha1sum = sha1sum.split(%r(\s+))[0]
   
   puts
+  print "[47;30m[0K"
   puts "#{colorize(:underline)}#{colorize(:bright)}Summary#{colorize(:off)}"
+  print "[47;30m[0K"
   puts "Healthcheck version: #{sha1sum}"
   puts "Magento version: #{$saved[:magento_version]}"
   puts "Kernel version: #{$saved[:kernel_version]}"
@@ -1180,7 +1184,9 @@ def showsummary
   if $saved[:cron] != 1
     puts colorize(:redbg) + "cron.sh is called in #{$saved[:cron] || 0} places." + colorize(:off)
   end
+  print colorize(:off) + "[0K"
 end
+
 if Process.uid != 0
     puts colorize(:redbg) + "Not running as root.  May not be able to get all info." + colorize(:off)
 end
