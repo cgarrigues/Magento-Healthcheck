@@ -185,12 +185,12 @@ class Scannable
                 else
                   if test == :flag
                     if value
-                      endinsert = colorize(:off) + ' ' + colorize(:invert) + "#{value}" + colorize(:off) + colorize(:bright)
+                      endinsert = colorize(:off) + colorize(:invert) + " #{value} " + colorize(:off) + colorize(:bright)
                     else
                       endinsert = colorize(:off) + colorize(:bright)
                     end
                   else
-                    endinsert = colorize(:off) + ' ' + colorize(:invert) + "(should be #{test} #{value})" + colorize(:off) + colorize(:bright)
+                    endinsert = colorize(:off) + colorize(:invert) + " (should be #{test} #{value}) " + colorize(:off) + colorize(:bright)
                   end
                   state = :bad
                 end
@@ -662,9 +662,9 @@ class DocRoot < DocumentRoot
       if etcpath.exist?
         scanroot rootpath
       else
-        printline colorize(:redbg) + rootpath + " is not a magento root." + colorize(:off)
+        printline colorize(:redbg) + rootpath + " is not a magento root." + cleareol + colorize(:off)
         findallrootpaths(rootpath).each do |dir|
-          printline colorize(:invert) + "But #{dir} is." + colorize(:off)
+          printline colorize(:invert) + "But #{dir} is." + cleareol + colorize(:off)
           scanroot rootpath + dir
         end
       end
@@ -1078,25 +1078,25 @@ class MagentoXmlFile < XmlFile
             if ipaddress = gettext(cache, "memcached/servers/server/host")
               if port = gettext(cache, "memcached/servers/server/port")
                 back = Memcached
-                printline colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{ipaddress}:#{port}." + colorize(:off)
+                printline colorize(:invert) + "config/global/#{foo}/memcached/servers/server #{backend} on #{ipaddress}:#{port}." + cleareol + colorize(:off)
                 alsoscan [Memcached, ipaddress, port]
               else
-                printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/memcached/servers/server/port" + colorize(:off)
+                printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/memcached/servers/server/port" + cleareol + colorize(:off)
               end
             else
-              printline colorize(:redbg) + "host not properly defined in config/global/#{foo}/memcached/servers/server/host" + colorize(:off)
+              printline colorize(:redbg) + "host not properly defined in config/global/#{foo}/memcached/servers/server/host" + cleareol + colorize(:off)
             end
           elsif backend == "Cm_Cache_Backend_Redis"
             if ipaddress = gettext(cache, "backend_options/server")
               if port = gettext(cache, "backend_options/port")
                 back = Redis
-                printline colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{ipaddress}:#{port}." + colorize(:off)
+                printline colorize(:invert) + "config/global/#{foo}/backend_options #{backend} on #{ipaddress}:#{port}." + cleareol + colorize(:off)
                 alsoscan [Redis, ipaddress, port]
               else
-                printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/backend_options/port" + colorize(:off)
+                printline colorize(:redbg) + "port not properly defined in config/global/#{foo}/backend_options/port" + cleareol + colorize(:off)
               end
             else
-              printline colorize(:redbg) + "ipaddress not properly defined in config/global/#{foo}/backend_options/server" + colorize(:off)
+              printline colorize(:redbg) + "ipaddress not properly defined in config/global/#{foo}/backend_options/server" + cleareol + colorize(:off)
             end
           end
         end
@@ -1105,13 +1105,13 @@ class MagentoXmlFile < XmlFile
     if redis_session = doc.elements["config/global/redis_session"]
       if ipaddress = gettext(redis_session, "host")
         if port = gettext(redis_session, "port")
-          printline colorize(:invert) + "/config/global/redis_session on #{ipaddress}:#{port}." + colorize(:off)
+          printline colorize(:invert) + "/config/global/redis_session on #{ipaddress}:#{port}." + cleareol + colorize(:off)
           alsoscan [Redis, ipaddress, port]
         else
-          printline colorize(:redbg) + "port not properly defined in config/global/redis_session" + colorize(:off)
+          printline colorize(:redbg) + "port not properly defined in config/global/redis_session" + cleareol + colorize(:off)
         end
       else
-        printline colorize(:redbg) + "host not properly defined in config/global/redis_session" + colorize(:off)
+        printline colorize(:redbg) + "host not properly defined in config/global/redis_session" + cleareol + colorize(:off)
       end
     end
     if resources = doc.elements["config/global/resources"]
@@ -1120,19 +1120,19 @@ class MagentoXmlFile < XmlFile
         if username = gettext(connection, "username")
           if password = gettext(connection, "password")
             if dbname = gettext(connection, "dbname")
-              printline colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{ipaddress}." + colorize(:off)
+              printline colorize(:invert) + "/config/global/resources database #{dbname} on #{username}\@#{ipaddress}." + cleareol + colorize(:off)
               alsoscan [Mysql, ipaddress, username, password, dbname]
             else
-              printline colorize(:redbg) + "dbname not properly defined in default_setup/connection" + colorize(:off)
+              printline colorize(:redbg) + "dbname not properly defined in default_setup/connection" + cleareol + colorize(:off)
             end
           else
-            printline colorize(:redbg) + "password not properly defined in default_setup/connection" + colorize(:off)
+            printline colorize(:redbg) + "password not properly defined in default_setup/connection" + cleareol + colorize(:off)
           end
         else
-          printline colorize(:redbg) + "username not properly defined in default_setup/connection" + colorize(:off)
+          printline colorize(:redbg) + "username not properly defined in default_setup/connection" + cleareol + colorize(:off)
         end
       else
-        printline colorize(:redbg) + "ipaddress not properly defined in default_setup/connection" + colorize(:off)
+        printline colorize(:redbg) + "ipaddress not properly defined in default_setup/connection" + cleareol + colorize(:off)
       end
     end
   end
@@ -1158,25 +1158,25 @@ def showsummary
   puts cleareol + "Magento version: #{$saved[:magento_version]}"
   puts cleareol + "Kernel version: #{$saved[:kernel_version]}"
   if $saved[:apache_version]
-    puts "cleareol + Apache version: #{$saved[:apache_version]}"
+    puts cleareol + "Apache version: #{$saved[:apache_version]}"
   end
   if $saved[:nginx]
-    puts "cleareol + Running nginx"
+    puts cleareol + "Running nginx"
   end
   if $saved[:memcache_version]
-    puts "cleareol + memcache version: #{$saved[:memcache_version]}"
+    puts cleareol + "memcache version: #{$saved[:memcache_version]}"
   end
   if $saved[:redis_version]
-    puts "cleareol + Redis version: #{$saved[:redis_version]}"
+    puts cleareol + "Redis version: #{$saved[:redis_version]}"
   end
   if $saved[:php_version]
-    puts "cleareol + PHP version: #{$saved[:php_version]}"
+    puts cleareol + "PHP version: #{$saved[:php_version]}"
   end
   if $saved[:mysql_client_api_version]
-    puts "cleareol + Mysql Client API version: #{$saved[:mysql_client_api_version]}"
+    puts cleareol + "Mysql Client API version: #{$saved[:mysql_client_api_version]}"
   end
-  puts "cleareol + Network interfaces: #{$saved[:network_addrs].join(', ')}"
-  puts "cleareol + Magento roots:"
+  puts cleareol + "Network interfaces: #{$saved[:network_addrs].join(', ')}"
+  puts cleareol + "Magento roots:"
   if $saved[:magento_roots]
     puts cleareol + "\t" + $saved[:magento_roots].join("\n\t")
   else
