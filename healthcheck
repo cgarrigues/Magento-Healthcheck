@@ -463,7 +463,7 @@ class Free < ShellCommand
   self.matches = {
     %r(total)               => :heading,
     %r(Swap:\s+\d+\s+(\d+)) => [{"=" => 0,
-                                 :note => "Swap non-zero indicates that swapping has occured in the past.  If this is small, it may not be an issue; if it's large, then something nasty happened sometime since the last reboot."}],
+                                 :note => "Swap non-zero indicates that swapping has occured in the past.\n  If this is small, it may not be an issue;\n  if it's large, then something nasty happened sometime since the last reboot."}],
   }
 end
 
@@ -581,7 +581,7 @@ class DfHt < ShellCommand
   self.matches = {
     %r(\s(\d+)\%)   => [{"<"   => 75}],
     %r(^([\d\.]+):) => [{:flag => "NFS Mount",
-                         :note => "An NFS mounted filesystem isn't necessarily an issue, but if magento is running from this partition, make certain it's performant."}],
+                         :note => "An NFS mounted filesystem isn't necessarily an issue,\n  but if magento is running from this partition, make certain it's performant."}],
   }
 end
 
