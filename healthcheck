@@ -975,12 +975,14 @@ class MysqlVariables < MysqlCommand
   self.cmd = 'show global variables'
   self.matches = {
     %r(innodb_log_file_size\s(\S+)) => [{">"   => 128*1024*1024,
-                                         :note => "innodb_log_file_size should be >128MB."}],
+                                         :note => "innodb_log_file_size should be >=128MB."}],
+    %r(innodb_buffer_pool_size\s(\S+)) => [{">"   => 128*1024*1024,
+                                         :note => "innodb_log_file_size should be >=128MB."}],
     %r(max_heap_table_size\s(\S+))  => [{">"   => 128*1024*1024,
                                          :save => :heap_table_size}],
     %r(tmp_table_size\s(\S+))       => [{">"   => 128*1024*1024,
                                          "="   => :heap_table_size,
-                                         :note => "tmp_table_size and max_heap_table_size should both have the same value and should both be >128MB."}],
+                                         :note => "tmp_table_size and max_heap_table_size should both have the same value and should both be >=128MB."}],
     %r((Access denied.*))           => [{:flag => "Password issue?"}],
   }
 end
