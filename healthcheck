@@ -739,6 +739,24 @@ class WebUser < User
   end
 end
 
+class NginxV < ShellCommand
+  def initialize(command)
+    super()
+    self.class.cmd = "#{command} -V"
+  end
+
+  self.matches = {
+    %r(--conf-path=([/a-z\.]+)) => [{:alsocheck => NgConf}],
+  }
+end
+
+class NgExe < Collection
+  def initialize(*args)
+    super
+    @children = [NginxV]
+  end
+end
+
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
@@ -748,11 +766,14 @@ class Ps < ShellCommand
     %r(root.*\s([/a-z]*httpd))            => [{:alsocheck => Apache,
                                                :save      => :apache}],
     %r((\w+).*\s[/a-z]*httpd)             => [{:alsocheck => WebUser}],
-    %r(nginx: master process .* -c (\S*)) => [{:alsocheck => NgConf,
+    %r(nginx: master process .* -c (\S*)) => [{:alsocheck => NgConf}],
+    %r(nginx: master process (\S*))       => [{:alsocheck => NgExe,
                                                :save      => :nginx}],
     %r((memcached).*-m (\d+))             => [{:save      => :memcache},
                                               {">"        => 1024}],
-    %r(redis-server\s+(\S+))              => [{:alsocheck => RedisConf,
+    %r(redis-server\s+([\d\.]+):(\d+))    => [{:alsocheck => Redis,
+                                               :save      => :redis}],
+    %r(redis-server\s+([\a-z\./]+))       => [{:alsocheck => RedisConf,
                                                :save      => :redis}],
     %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
   }
