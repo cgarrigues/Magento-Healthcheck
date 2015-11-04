@@ -724,7 +724,11 @@ class SysCrontabs < Collection
   def scan
     alsoscan [SysCrontab, '/etc/crontab']
     alsoscan [SysCrontab, '/etc/cron.d/*']
-    alsoscan [UserCrontab, '/var/spool/cron/*']
+    if Pathname.new('/var/spool/cron/crontabs').directory?
+      alsoscan [UserCrontab, '/var/spool/cron/crontabs/*']
+    else
+      alsoscan [UserCrontab, '/var/spool/cron/*']
+    end
   end
 end
 
