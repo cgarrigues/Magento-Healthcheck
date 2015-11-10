@@ -199,7 +199,7 @@ class Scannable
             if state == :bad
               begininsert = colorize(:redbg)
               showline = true
-              if note
+              if note and not $notes.member?(note)
                 $notes.push note
               end
             elsif state == :good
