@@ -423,6 +423,18 @@ class ScannableFile < Scannable
   end
 end
 
+class ProcFile < ScannableFile 
+end
+
+class CpuInfo < ProcFile
+  def initialize
+    @filename = "/proc/cpuinfo"
+  end
+  self.matches = {
+    %r(^(processor)) => [{:count => :processors}],
+  }
+end
+
 class ConfFile < ScannableFile
 end
 
@@ -1171,7 +1183,7 @@ class MagentoXmlFile < XmlFile
 end
 
 $oldchecks = []
-$checks = [UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
+$checks = [CpuInfo, UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
 
 def alsoscan(item)
   unless ($checks.include? item) or ($oldchecks.include? item)
@@ -1192,6 +1204,7 @@ def showsummary
   if $saved[:apache_version]
     puts cleareol + "Apache version: #{$saved[:apache_version]}"
   end
+  puts cleareol + "Number of processors: #{$saved[:processors]}"
   if $saved[:nginx]
     puts cleareol + "Running nginx"
   end
