@@ -8,10 +8,12 @@ require 'pathname'
 $options = Hash.new
 $saved = Hash.new
 
+$options[:roots] = []
 OptionParser.new do |opt|
   opt.on('-v', '--verbose', 'Show all output of commands') { |o| $options[:verbose] = o}
   opt.on('-q', '--quiet', "Don't show output of unimportant stuff") { |o| $options[:quiet] = o}
   opt.on('-x', '--findroots', "Find Mangento root directories that aren't at the webserver root") { |o| $options[:findroots] = o}
+  opt.on('-r', '--root dir', "Magento Root") { |o| $options[:roots].push o}
 end.parse!
 
 Effects = {
@@ -1243,6 +1245,11 @@ end
 if Process.uid != 0
     puts colorize(:redbg) + "Not running as root.  May not be able to get all info." + colorize(:off)
 end
+
+$options[:roots].each do |dir|
+  $checks.push [DocRoot, dir]
+end
+
 while check = $checks.shift do
   if check.is_a? Array
     objclass = check.shift
