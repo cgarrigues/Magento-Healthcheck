@@ -11,6 +11,7 @@ $saved = Hash.new
 OptionParser.new do |opt|
   opt.on('-v', '--verbose', 'Show all output of commands') { |o| $options[:verbose] = o}
   opt.on('-q', '--quiet', "Don't show output of unimportant stuff") { |o| $options[:quiet] = o}
+  opt.on('-x', '--findroots', "Find Mangento root directories that aren't at the webserver root") { |o| $options[:findroots] = o}
 end.parse!
 
 Effects = {
@@ -683,9 +684,11 @@ class DocRoot < DocumentRoot
         scanroot rootpath
       else
         printline colorize(:redbg) + rootpath + " is not a magento root." + cleareol + colorize(:off)
-        findallrootpaths(rootpath).each do |dir|
-          printline colorize(:invert) + "But #{dir} is." + cleareol + colorize(:off)
-          scanroot rootpath + dir
+        if $options[:findroots]
+          findallrootpaths(rootpath).each do |dir|
+            printline colorize(:invert) + "But #{dir} is." + cleareol + colorize(:off)
+            scanroot rootpath + dir
+          end
         end
       end
     else
