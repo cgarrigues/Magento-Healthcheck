@@ -190,7 +190,11 @@ class Scannable
                       endinsert = colorize(:off) + colorize(:bright)
                     end
                   else
-                    endinsert = colorize(:off) + colorize(:invert) + " (should be #{test} #{value}) " + colorize(:off) + colorize(:bright)
+                    if value.is_a? Symbol
+                      endinsert = colorize(:off) + colorize(:invert) + " (should be #{test} #{$saved[value]} (#{value})) " + colorize(:off) + colorize(:bright)
+                    else
+                      endinsert = colorize(:off) + colorize(:invert) + " (should be #{test} #{value}) " + colorize(:off) + colorize(:bright)
+                    end
                   end
                   state = :bad
                 end
@@ -431,7 +435,7 @@ class CpuInfo < ProcFile
     @filename = "/proc/cpuinfo"
   end
   self.matches = {
-    %r(^(processor)) => [{:count => :processors}],
+    %r(^(processor)) => [{:count => :processorcount}],
   }
 end
 
@@ -695,8 +699,8 @@ end
 
 class NgConf < NginxConf
   self.matches = {
-    %r(^\s*include\s+(/\S+);) => [{:alsocheck => NgConf}],
-
+    %r(^\s*include\s+(/\S+);)    => [{:alsocheck => NgConf}],
+    %r(worker_processes\s+(\d+)) => [{"=" => :processorcount}],
   }
 end
 
@@ -1204,7 +1208,7 @@ def showsummary
   if $saved[:apache_version]
     puts cleareol + "Apache version: #{$saved[:apache_version]}"
   end
-  puts cleareol + "Number of processors: #{$saved[:processors]}"
+  puts cleareol + "Number of processors: #{$saved[:processorcount]}"
   if $saved[:nginx]
     puts cleareol + "Running nginx"
   end
