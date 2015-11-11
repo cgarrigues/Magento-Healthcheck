@@ -30,5 +30,16 @@ To send information to Magento support, use the --verbose option and compress th
 ./healthcheck --verbose | bzip2 > $HOSTNAME-health.bz2
 ```
 
+In a test or dev environment, you may have Magento Roots which are located below the document root.  To locate those, use the --findroots option:
+
+```bash
+./healthcheck --findroots
+```
+
+Also, you can specify the location of one or more magento roots with the --root option:
+
+```bash
+./healthcheck --root=/home/user/dev/1234 --root=/home/user2/dev/5678
+```
 
 Updates and additions to the code in the form of Pull Requests are much appreciated.
