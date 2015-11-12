@@ -829,7 +829,7 @@ class Ps < ShellCommand
                                                {">"        => 1024}],
     %r(redis-server\s+([\d\.]+):(\d+))     => [{:alsocheck => Redis,
                                                 :save      => :redis}],
-    %r(redis-server\s+([\a-z\./]+))        => [{:alsocheck => RedisConf,
+    %r(redis-server\s+([a-z\./]+))         => [{:alsocheck => RedisConf,
                                                 :save      => :redis}],
     %r(mysqld.*--log-error=([/\.\w]+))     => [{:alsocheck => MysqlLog}],
     %r(php-from: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
