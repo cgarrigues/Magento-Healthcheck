@@ -405,8 +405,16 @@ end
 class ScannableFile < Scannable
   attr_reader :filename
   
+  def basedir
+    "/"
+  end
+  
   def initialize(filename)
-    @filename = filename
+    if %r(^/) =~ filename
+      @filename = filename
+    else
+      @filename = basedir + '/' + filename
+    end
   end
 
   def label
@@ -890,6 +898,9 @@ class Messages < LogFile
 end
 
 class ApacheConf < ConfFile
+  def basedir
+    $saved[:httpdroot]
+  end
   def cleanup(value)
     if %r(^"(.*)"$) =~ value
       value = $1
@@ -902,6 +913,7 @@ class ApacheConf < ConfFile
 
   self.matches = {
     %r(^\s*DocumentRoot\s+(\S+)) => [{:alsocheck => DocRoot}],
+    %r(^\s*Include\s+(\S+))      => [{:alsocheck => ApacheConf}],
   }
 end
 
