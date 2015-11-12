@@ -816,12 +816,12 @@ end
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    %r(root.*\s([/a-z]*apache2?))          => [{:alsocheck => Apache,
+    %r(root.*\s([/a-z]*apache2?)$)         => [{:alsocheck => Apache,
                                                 :save      => :apache}],
-    %r((\w+).*\s[/a-z]*apache2?)           => [{:alsocheck => WebUser}],
-    %r(root.*\s([/a-z]*httpd))             => [{:alsocheck => Apache,
+    %r((\w+).*\s[/a-z]*apache2?$)          => [{:alsocheck => WebUser}],
+    %r(root.*\s([/a-z]*httpd)$)            => [{:alsocheck => Apache,
                                                 :save      => :apache}],
-    %r((\w+).*\s[/a-z]*httpd)              => [{:alsocheck => WebUser}],
+    %r((\w+).*\s[/a-z]*httpd$)             => [{:alsocheck => WebUser}],
     %r(nginx: master process .* -c (\S*))  => [{:alsocheck => NgConf}],
     %r(nginx: master process (\S*))        => [{:alsocheck => NgExe,
                                                 :save      => :nginx}],
