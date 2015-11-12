@@ -858,7 +858,7 @@ class HttpdV < ShellCommand
     if $saved[:httpdroot] && $saved[:serverconfigfile]
       configfile = $saved[:httpdroot] + "/" + $saved[:serverconfigfile]
       printline colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
-      [[ApacheFile, configfile]]
+      [[ApacheConf, configfile]]
     else
       []
     end
@@ -889,7 +889,7 @@ class Messages < LogFile
   }
 end
 
-class ApacheFile < ConfFile
+class ApacheConf < ConfFile
   def cleanup(value)
     if %r(^"(.*)"$) =~ value
       value = $1
@@ -913,9 +913,9 @@ class HttpdS < ShellCommand
 
   self.matches = {
     %r(default server (\S+)\s+\(([^:]+):) => [{:okay => nil},
-                                              {:alsocheck => ApacheFile}],
+                                              {:alsocheck => ApacheConf}],
     %r(namevhost (\S+)\s+\(([^:]+):)      => [{:okay => nil},
-                                              {:alsocheck => ApacheFile}],
+                                              {:alsocheck => ApacheConf}],
   }
 end
 
