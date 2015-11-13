@@ -589,9 +589,18 @@ class Apache < Collection
   end
 end
 
+class LogFile < ScannableFile
+end
+
+class PhpFpmErrorLog < LogFile
+  self.matches = {
+  }
+end
+
 class PhpFpmConf < ConfFile
   self.matches = {
     %r(^\s*include\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmConf}],
+    %r(^\s*error_log\s*=\s*(\S+))                   => [{:alsocheck => PhpFpmErrorLog}],
     %r(^\s*emergency_restart_interval\s*=\s*(\S+))  => [{:save      => :emergencyrestartinterval}],
     %r(^\s*emergency_restart_threshold\s*=\s*(\S+)) => [{:save      => :emergencyrestartthreshold}],
     %r(^\s*process_control_timeout\s*=\s*(\S+))     => [{:save      => :processcontroltimeout}],
@@ -741,9 +750,6 @@ end
 class NginxinxConf < ConfFile
 end
 
-class LogFile < ScannableFile
-end
-
 class NginxErrorLog < LogFile
   self.matches = {
     %r(\[error\].*\] (.*)$) => [{:flag => nil,
@@ -816,27 +822,27 @@ class NginxExe < Collection
   def initialize(*args)
     super
     @children = [NginxV]
-  end
+    end
 end
 
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    %r(^root.*\s([/a-z]*apache2?)$)        => [{:alsocheck => Apache,
-                                                :save      => :apache}],
-    %r(^root.*\s([/a-z]*httpd)$)           => [{:alsocheck => Apache,
-                                                :save      => :apache}],
-    %r(nginx: master process .* -c (\S*))  => [{:alsocheck => NginxConf}],
-    %r(nginx: master process (\S*))        => [{:alsocheck => NginxExe,
-                                                :save      => :nginx}],
-    %r((memcached).*-m (\d+))              => [{:save      => :memcache},
-                                               {">"        => 1024}],
-    %r(redis-server\s+([\d\.]+):(\d+))     => [{:alsocheck => Redis,
-                                                :save      => :redis}],
-    %r(redis-server\s+([a-z\./]+))         => [{:alsocheck => RedisConf,
-                                                :save      => :redis}],
-    %r(mysqld.*--log-error=([/\.\w]+))     => [{:alsocheck => MysqlLog}],
-    %r(php-from: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
+    %r(^root.*\s([/a-z]*apache2?)$)       => [{:alsocheck => Apache,
+                                               :save      => :apache}],
+    %r(^root.*\s([/a-z]*httpd)$)          => [{:alsocheck => Apache,
+                                               :save      => :apache}],
+    %r(nginx: master process .* -c (\S*)) => [{:alsocheck => NginxConf}],
+    %r(nginx: master process (\S*))       => [{:alsocheck => NginxExe,
+                                               :save      => :nginx}],
+    %r((memcached).*-m (\d+))             => [{:save      => :memcache},
+                                              {">"        => 1024}],
+    %r(redis-server\s+([\d\.]+):(\d+))    => [{:alsocheck => Redis,
+                                               :save      => :redis}],
+    %r(redis-server\s+([a-z\./]+))        => [{:alsocheck => RedisConf,
+                                               :save      => :redis}],
+    %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
+    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
   }
   
 end
