@@ -405,10 +405,6 @@ end
 class ScannableFile < Scannable
   attr_reader :filename
   
-  def basedir
-    "/"
-  end
-  
   def initialize(filename)
     if %r(^/) =~ filename
       @filename = filename
@@ -442,7 +438,7 @@ class ProcFile < ScannableFile
 end
 
 class CpuInfo < ProcFile
-  def initialize
+  def initialize(*args)
     @filename = "/proc/cpuinfo"
   end
   self.matches = {
@@ -453,9 +449,9 @@ end
 class ConfFile < ScannableFile
 end
 
-class Selinux < ConfFile
-  def filename
-    "/etc/selinux/config"
+class SelinuxConf < ConfFile
+  def initialize(*args)
+    @filename = "/etc/selinux/config"
   end
   self.matches = {
     %r(^SELINUX=(\w+)) => [{"ne" => "enforcing"}],
@@ -465,7 +461,7 @@ end
 class Dmesg < ShellCommand
   self.cmd = 'dmesg'
   self.matches = {
-    %r(^(SELinux):  Initializing.$) => [{:alsocheck => Selinux,
+    %r(^(SELinux):  Initializing.$) => [{:alsocheck => SelinuxConf,
                                          :note => "SELinux being enabled and not properly configured may break many things."}],
     %r((segfault))                  => [{:flag => nil,
                                          :note => "Any segfaulting process should be understood."}],
