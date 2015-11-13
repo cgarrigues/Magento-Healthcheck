@@ -720,6 +720,24 @@ class DocRoot < DocumentRoot
   end
 end
 
+class User < Collection
+end
+
+class WebUser < User
+  attr_reader :userid
+
+  def initialize(userid)
+    @userid = userid
+  end
+
+  def scan
+#    crondir = Pathname.new "/var/spool/cron/"
+#    if (cronfile = crondir + userid).exist?
+#      alsoscan [UserCrontab, cronfile]
+#    end
+  end
+end
+
 class NginxConf < ConfFile
 end
 
@@ -743,9 +761,6 @@ class MysqlLog < LogFile
     %r(^(\d+\s+\d+:\d+:\d+).*(Database was not shut down normally)) => [{:flag => "YYMMDD HH:MM:SS"},
                                                                         {:flag => nil}],
   }
-end
-
-class User < Collection
 end
 
 class Crontab < ConfFile
@@ -774,21 +789,6 @@ class SysCrontabs < Collection
     else
       alsoscan [UserCrontab, '/var/spool/cron/*']
     end
-  end
-end
-
-class WebUser < User
-  attr_reader :userid
-
-  def initialize(userid)
-    @userid = userid
-  end
-
-  def scan
-#    crondir = Pathname.new "/var/spool/cron/"
-#    if (cronfile = crondir + userid).exist?
-#      alsoscan [UserCrontab, cronfile]
-#    end
   end
 end
 
@@ -845,27 +845,45 @@ class Httpdt < ShellCommand
   }
 end
 
+class ApacheErrorLog < LogFile
+  def basedir
+    $saved[:httpdroot]
+  end
+end
+
+class ApacheConf < ConfFile
+  def basedir
+    $saved[:httpdroot]
+  end
+  def cleanup(value)
+    if %r(^"(.*)"$) =~ value
+      value = $1
+    end
+    if %r(^(.*)/$) =~ value
+      value = $1
+    end
+    return value
+  end
+
+  self.matches = {
+    %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocRoot}],
+    %r(^\s*Include\s+(\S+))i      => [{:alsocheck => ApacheConf}],
+    %r(^\s*User\s+(\S+))i         => [{:alsocheck => WebUser}],
+  }
+end
+
 class HttpdV < ShellCommand
   def initialize(command)
     self.class.cmd = "#{command} -V"
   end
 
   self.matches = {
-    %r(Server MPM:\s+(\S+))             => [{:okay => nil}],
-    %r(Server version:\s*Apache/(\S+))  => [{:save => :apache_version}],
-    %r(^ -D HTTPD_ROOT="(\S+)")         => [{:save => :httpdroot}],
-    %r(^ -D SERVER_CONFIG_FILE="(\S+)") => [{:save => :serverconfigfile}],
+    %r(Server MPM:\s+(\S+))             => [{:okay      => nil}],
+    %r(Server version:\s*Apache/(\S+))  => [{:save      => :apache_version}],
+    %r(^ -D HTTPD_ROOT="(\S+)")         => [{:save      => :httpdroot}],
+    %r(^ -D SERVER_CONFIG_FILE="(\S+)") => [{:alsocheck => ApacheConf}],
+    %r(^ -D DEFAULT_ERRORLOG="(\S+)")   => [{:alsocheck => ApacheErrorLog}],
   }
-
-  def also_check
-    if $saved[:httpdroot] && $saved[:serverconfigfile]
-      configfile = $saved[:httpdroot] + "/" + $saved[:serverconfigfile]
-      printline colorize(:invert) + "Main config file is at #{configfile}." + colorize(:off)
-      [[ApacheConf, configfile]]
-    else
-      []
-    end
-  end
 end
 
 class MagExceptionLog < LogFile
@@ -889,27 +907,6 @@ class Messages < LogFile
   end
   self.matches = {
     %r((ERROR)) => [{:flag => nil}]
-  }
-end
-
-class ApacheConf < ConfFile
-  def basedir
-    $saved[:httpdroot]
-  end
-  def cleanup(value)
-    if %r(^"(.*)"$) =~ value
-      value = $1
-    end
-    if %r(^(.*)/$) =~ value
-      value = $1
-    end
-    return value
-  end
-
-  self.matches = {
-    %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocRoot}],
-    %r(^\s*Include\s+(\S+))i      => [{:alsocheck => ApacheConf}],
-    %r(^\s*User\s+(\S+))i         => [{:alsocheck => WebUser}],
   }
 end
 
