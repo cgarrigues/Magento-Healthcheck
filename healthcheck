@@ -738,20 +738,28 @@ class WebUser < User
   end
 end
 
-class NginxConf < ConfFile
-end
-
-class NgConf < NginxConf
-  self.matches = {
-    %r(^\s*include\s+(\S+);)         => [{:alsocheck => NgConf}],
-    %r(^\s*worker_processes\s+(\d+)) => [{"="        => :processorcount}],
-    %r(^\s*user\s+(\d+))             => [{:alsocheck => WebUser}],
-    %r(^\s*server_tokens\s+(\S+))    => [{"="        => "off",
-                                          :note      => "turn off server_tokens for security reasons"}],
-  }
+class NginxinxConf < ConfFile
 end
 
 class LogFile < ScannableFile
+end
+
+class NginxErrorLog < LogFile
+  self.matches = {
+    %r(\[error\].*\] (.*)$) => [{:flag => nil,
+                                 :note => "Investigate this error."}],
+  }
+end
+
+class NginxConf < NginxinxConf
+  self.matches = {
+    %r(^\s*include\s+(\S+);)         => [{:alsocheck => NginxConf}],
+    %r(^\s*worker_processes\s+(\d+)) => [{"="        => :processorcount}],
+    %r(^\s*user\s+(\d+))             => [{:alsocheck => WebUser}],
+    %r(^\s*error_log\s+(\S+))        => [{:alsocheck => NginxErrorLog}],
+    %r(^\s*server_tokens\s+(\S+))    => [{"="        => "off",
+                                          :note      => "turn off server_tokens for security reasons"}],
+  }
 end
 
 class MysqlLog < LogFile
@@ -799,11 +807,12 @@ class NginxV < ShellCommand
   end
 
   self.matches = {
-    %r(--conf-path=([/a-z\.]+)) => [{:alsocheck => NgConf}],
+    %r(--conf-path=([/a-z\.]+))      => [{:alsocheck => NginxConf}],
+    %r(--error-log-path=([/a-z\.]+)) => [{:alsocheck => NginxErrorLog}],
   }
 end
 
-class NgExe < Collection
+class NginxExe < Collection
   def initialize(*args)
     super
     @children = [NginxV]
@@ -817,8 +826,8 @@ class Ps < ShellCommand
                                                 :save      => :apache}],
     %r(^root.*\s([/a-z]*httpd)$)           => [{:alsocheck => Apache,
                                                 :save      => :apache}],
-    %r(nginx: master process .* -c (\S*))  => [{:alsocheck => NgConf}],
-    %r(nginx: master process (\S*))        => [{:alsocheck => NgExe,
+    %r(nginx: master process .* -c (\S*))  => [{:alsocheck => NginxConf}],
+    %r(nginx: master process (\S*))        => [{:alsocheck => NginxExe,
                                                 :save      => :nginx}],
     %r((memcached).*-m (\d+))              => [{:save      => :memcache},
                                                {">"        => 1024}],
