@@ -591,7 +591,7 @@ end
 
 class PhpFpmConf < ConfFile
   self.matches = {
-    %r(^\s*include\s*=\s*(/\S+))                    => [{:alsocheck => PhpFpmConf}],
+    %r(^\s*include\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmConf}],
     %r(^\s*emergency_restart_interval\s*=\s*(\S+))  => [{:save      => :emergencyrestartinterval}],
     %r(^\s*emergency_restart_threshold\s*=\s*(\S+)) => [{:save      => :emergencyrestartthreshold}],
     %r(^\s*process_control_timeout\s*=\s*(\S+))     => [{:save      => :processcontroltimeout}],
@@ -725,8 +725,9 @@ end
 
 class NgConf < NginxConf
   self.matches = {
-    %r(^\s*include\s+(/\S+);)        => [{:alsocheck => NgConf}],
+    %r(^\s*include\s+(\S+);)         => [{:alsocheck => NgConf}],
     %r(^\s*worker_processes\s+(\d+)) => [{"="        => :processorcount}],
+    %r(^\s*user\s+(\d+))             => [{:alsocheck => WebUser}],
     %r(^\s*server_tokens\s+(\S+))    => [{"="        => "off",
                                           :note      => "turn off server_tokens for security reasons"}],
   }
@@ -812,12 +813,10 @@ end
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    %r(root.*\s([/a-z]*apache2?)$)         => [{:alsocheck => Apache,
+    %r(^root.*\s([/a-z]*apache2?)$)        => [{:alsocheck => Apache,
                                                 :save      => :apache}],
-    %r((\w+).*\s[/a-z]*apache2?$)          => [{:alsocheck => WebUser}],
-    %r(root.*\s([/a-z]*httpd)$)            => [{:alsocheck => Apache,
+    %r(^root.*\s([/a-z]*httpd)$)           => [{:alsocheck => Apache,
                                                 :save      => :apache}],
-    %r((\w+).*\s[/a-z]*httpd$)             => [{:alsocheck => WebUser}],
     %r(nginx: master process .* -c (\S*))  => [{:alsocheck => NgConf}],
     %r(nginx: master process (\S*))        => [{:alsocheck => NgExe,
                                                 :save      => :nginx}],
@@ -908,8 +907,9 @@ class ApacheConf < ConfFile
   end
 
   self.matches = {
-    %r(^\s*DocumentRoot\s+(\S+)) => [{:alsocheck => DocRoot}],
-    %r(^\s*Include\s+(\S+))      => [{:alsocheck => ApacheConf}],
+    %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocRoot}],
+    %r(^\s*Include\s+(\S+))i      => [{:alsocheck => ApacheConf}],
+    %r(^\s*User\s+(\S+))i         => [{:alsocheck => WebUser}],
   }
 end
 
