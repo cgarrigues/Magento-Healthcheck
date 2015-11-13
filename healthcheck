@@ -72,9 +72,13 @@ class Scannable
   def initialize(*args)
   end
   
+  def descriptor
+    self.class.superclass
+  end
+  
   def header
     puts
-    puts "#{colorize(:underline)}#{self.class.superclass}: #{colorize(:bright)}#{label}#{colorize(:off)}"
+    puts "#{colorize(:underline)}#{self.descriptor}: #{colorize(:bright)}#{label}#{colorize(:off)}"
   end
 
   def printheader
@@ -376,14 +380,14 @@ class Netstat < ShellCommand
 
   def process_saved
     if $saved[:time_wait]
-      if $saved[:time_wait] > 10
+      if $saved[:time_wait] < 100
         printline colorize(:greenfg) + "there are #{$saved[:time_wait]} connections stuck in TIME_WAIT" + colorize(:off)
       else
         printline colorize(:redbg) + "there are #{$saved[:time_wait]} connections stuck in TIME_WAIT" + colorize(:off)
       end
     end
     if $saved[:syn_recv]
-      if $saved[:syn_recv] > 10
+      if $saved[:syn_recv] < 100
         printline colorize(:greenfg) + "there are #{$saved[:syn_recv]} connections stuck in SYN_RECV" + colorize(:off)
       else
         printline colorize(:redbg) + "there are #{$saved[:syn_recv]} connections stuck in SYN_RECV" + colorize(:off)
@@ -413,6 +417,10 @@ class ScannableFile < Scannable
     end
   end
 
+  def descriptor
+    self.class
+  end
+
   def label
     filename
   end
@@ -434,10 +442,7 @@ class ScannableFile < Scannable
   end
 end
 
-class ProcFile < ScannableFile 
-end
-
-class CpuInfo < ProcFile
+class CpuInfo < ScannableFile 
   def initialize(*args)
     @filename = "/proc/cpuinfo"
   end
@@ -446,10 +451,7 @@ class CpuInfo < ProcFile
   }
 end
 
-class ConfFile < ScannableFile
-end
-
-class SelinuxConf < ConfFile
+class SelinuxConf < ScannableFile
   def initialize(*args)
     @filename = "/etc/selinux/config"
   end
@@ -589,15 +591,12 @@ class Apache < Collection
   end
 end
 
-class LogFile < ScannableFile
-end
-
-class PhpFpmErrorLog < LogFile
+class PhpFpmErrorLog < ScannableFile
   self.matches = {
   }
 end
 
-class PhpFpmConf < ConfFile
+class PhpFpmConf < ScannableFile
   self.matches = {
     %r(^\s*include\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmConf}],
     %r(^\s*error_log\s*=\s*(\S+))                   => [{:alsocheck => PhpFpmErrorLog}],
@@ -619,7 +618,7 @@ class PhpFpmConf < ConfFile
   end
 end
 
-class RedisConf < ConfFile
+class RedisConf < ScannableFile
   self.matches = {
     %r(^\s*(maxmemory)) => [{:flag => "Don't set maxmemory"}],
   }
@@ -649,13 +648,14 @@ class DfHit < ShellCommand
 end
 
 class DocumentRoot < Scannable
-end
-  
-class DocRoot < DocumentRoot
   attr_reader :rootpath
 
   def initialize(rootpath)
     @rootpath = Pathname.new rootpath
+  end
+
+  def descriptor
+    self.class
   end
 
   def label
@@ -729,10 +729,7 @@ class DocRoot < DocumentRoot
   end
 end
 
-class User < Collection
-end
-
-class WebUser < User
+class WebUser < Collection
   attr_reader :userid
 
   def initialize(userid)
@@ -747,17 +744,14 @@ class WebUser < User
   end
 end
 
-class NginxinxConf < ConfFile
-end
-
-class NginxErrorLog < LogFile
+class NginxErrorLog < ScannableFile
   self.matches = {
     %r(\[error\].*\] (.*)$) => [{:flag => nil,
                                  :note => "Investigate this error."}],
   }
 end
 
-class NginxConf < NginxinxConf
+class NginxConf < ScannableFile
   self.matches = {
     %r(^\s*include\s+(\S+);)         => [{:alsocheck => NginxConf}],
     %r(^\s*worker_processes\s+(\d+)) => [{"="        => :processorcount}],
@@ -768,7 +762,7 @@ class NginxConf < NginxinxConf
   }
 end
 
-class MysqlLog < LogFile
+class MysqlLog < ScannableFile
   self.matches = {
     %r(^(\d+\s+\d+:\d+:\d+).*(error))i                              => [{:flag => "YYMMDD HH:MM:SS"},
                                                                         {:flag => nil}],
@@ -777,17 +771,14 @@ class MysqlLog < LogFile
   }
 end
 
-class Crontab < ConfFile
-end
-
-class SysCrontab < Crontab
+class SysCrontab < ScannableFile
   self.matches = {
     %r(^[\#]+(cron.sh))  => [{:count => :cron}],
     %r(^[\#]+(cron.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
   }
 end
 
-class UserCrontab < Crontab
+class UserCrontab < ScannableFile
   self.matches = {
     %r(^[\#]+(cron.sh))  => [{:count => :cron}],
     %r(^[\#]+(cron.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
@@ -860,7 +851,7 @@ class Httpdt < ShellCommand
   }
 end
 
-class ApacheErrorLog < LogFile
+class ApacheErrorLog < ScannableFile
   def basedir
     $saved[:httpdroot]
   end
@@ -870,7 +861,7 @@ class ApacheErrorLog < LogFile
   }
 end
 
-class ApacheConf < ConfFile
+class ApacheConf < ScannableFile
   def basedir
     $saved[:httpdroot]
   end
@@ -885,7 +876,7 @@ class ApacheConf < ConfFile
   end
 
   self.matches = {
-    %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocRoot}],
+    %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocumentRoot}],
     %r(^\s*ErrorLog\s+(\S+))i     => [{:alsocheck => ApacheErrorLog}],
     %r(^\s*Include\s+(\S+))i      => [{:alsocheck => ApacheConf}],
     %r(^\s*User\s+(\S+))i         => [{:alsocheck => WebUser}],
@@ -906,7 +897,7 @@ class HttpdV < ShellCommand
   }
 end
 
-class MagExceptionLog < LogFile
+class MagExceptionLog < ScannableFile
   self.matches = {
     %r(exception\s'([^']*)' with message '([^']*)') => [{:flag => nil},
                                                         {:flag => nil,
@@ -918,10 +909,10 @@ class MagExceptionLog < LogFile
   }
 end
 
-class HtAccess < ConfFile
+class HtAccess < ScannableFile
 end
 
-class Messages < LogFile
+class Messages < ScannableFile
   def initialize
     super('/var/log/messages')
   end
@@ -1138,10 +1129,7 @@ class MagVersion < MagentoVersion
   end
 end
 
-class XmlFile < ScannableFile
-end
-
-class MagentoXmlFile < XmlFile
+class MagentoXmlFile < ScannableFile
   attr_reader :filename
   
   def initialize(filename)
@@ -1291,7 +1279,7 @@ if Process.uid != 0
 end
 
 $options[:roots].each do |dir|
-  $checks.push [DocRoot, dir]
+  $checks.push [DocumentRoot, dir]
 end
 
 while check = $checks.shift do
