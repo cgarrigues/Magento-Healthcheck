@@ -1,6 +1,8 @@
 # Magento-Healthcheck
 ruby script to perform a health check of a magento system
 
+Note that many magento systems do not have ruby installed, so you may have to install ruby first. (an aside: I am not prepared to rewrite this in php, sorry; if you want to do that, have at it.)
+
 Script is not yet ready for prime time and there are many things which are not yet being scanned.
 
 Pull down and execute the script using
@@ -42,4 +44,4 @@ Also, you can specify the location of one or more magento roots with the --root 
 ./healthcheck --root=/home/user/dev/1234 --root=/home/user2/dev/5678
 ```
 
-Updates and additions to the code in the form of Pull Requests are much appreciated.
+Updates and additions to the code in the form of Pull Requests are much appreciated. At the present time, please code to ruby-1.x standards, rather than 2.x.
