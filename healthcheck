@@ -849,6 +849,10 @@ class ApacheErrorLog < LogFile
   def basedir
     $saved[:httpdroot]
   end
+  self.matches = {
+    %r(\[error\].*\] (.*)$) => [{:flag => nil,
+                                 :note => "Investigate this error."}],
+  }
 end
 
 class ApacheConf < ConfFile
@@ -867,6 +871,7 @@ class ApacheConf < ConfFile
 
   self.matches = {
     %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocRoot}],
+    %r(^\s*ErrorLog\s+(\S+))i     => [{:alsocheck => ApacheErrorLog}],
     %r(^\s*Include\s+(\S+))i      => [{:alsocheck => ApacheConf}],
     %r(^\s*User\s+(\S+))i         => [{:alsocheck => WebUser}],
   }
