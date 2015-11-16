@@ -428,7 +428,13 @@ class ScannableFile < Scannable
   def openstream
     if filename =~ %r(\*)
       Dir[filename].each do |f|
-        alsoscan([self.class, f])
+        alsoscan [self.class, f]
+      end
+    elsif Pathname.new(filename).directory?
+      Dir.entries(filename).each do |f|
+        unless f =~ %r(^\.)
+          alsoscan [self.class, filename + "/" + f]
+        end
       end
     else
       begin
@@ -1101,6 +1107,22 @@ class Mysql < Collection
   end
 end
 
+class LogRotateConf < ScannableFile
+  self.matches = {
+    %r(^\s*include\s+(\S+))     => [{:alsocheck => LogRotateConf}],
+    %r(^(/[/a-z0-9_\.\*-]+)) => [{:collect => :rotatedlogs}],
+  }
+end
+
+class LogRotate < ScannableFile
+  def initialize
+    super('/etc/cron.daily/logrotate')
+  end
+  self.matches = {
+    %r(^/usr/sbin/logrotate\s+(\S+)) => [{:alsocheck => LogRotateConf}]
+  }
+end
+
 class MagentoVersion < ShellCommand
   attr_reader :path
   
@@ -1221,7 +1243,7 @@ class MagentoXmlFile < ScannableFile
 end
 
 $oldchecks = []
-$checks = [CpuInfo, UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
+$checks = [CpuInfo, LogRotate, UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
 
 def alsoscan(item)
   unless ($checks.include? item) or ($oldchecks.include? item)
