@@ -250,7 +250,7 @@ class Scannable
       end
     end
     if self.class.matches == {}
-      printline colorize(:invert) + 'No match rules defined yet' + colorize(:off)
+      printline colorize(:invert) + 'No match rules defined yet' + cleareol + colorize(:off)
     end
     $notes.each do |note|
       puts cleareol + note
@@ -759,6 +759,11 @@ class WebUser < Collection
   end
 end
 
+class NginxLog < ScannableLog
+  self.matches = {
+  }
+end
+
 class NginxErrorLog < ScannableLog
   self.matches = {
     %r(\[error\].*\] (.*)$) => [{:flag => nil,
@@ -771,6 +776,7 @@ class NginxConf < ScannableFile
     %r(^\s*include\s+(\S+);)         => [{:alsocheck => NginxConf}],
     %r(^\s*worker_processes\s+(\d+)) => [{"="        => :processorcount}],
     %r(^\s*user\s+(\d+))             => [{:alsocheck => WebUser}],
+    %r(^\s*access_log\s+(\S+))       => [{:alsocheck => NginxLog}],
     %r(^\s*error_log\s+(\S+))        => [{:alsocheck => NginxErrorLog}],
     %r(^\s*server_tokens\s+(\S+))    => [{"="        => "off",
                                           :note      => "turn off server_tokens for security reasons"}],
@@ -821,6 +827,7 @@ class NginxV < ShellCommand
   self.matches = {
     %r(--conf-path=([/a-z\.]+))      => [{:alsocheck => NginxConf}],
     %r(--error-log-path=([/a-z\.]+)) => [{:alsocheck => NginxErrorLog}],
+    %r(--http-log-path=([/a-z\.]+))  => [{:alsocheck => NginxLog}],
   }
 end
 
@@ -866,6 +873,14 @@ class Httpdt < ShellCommand
   }
 end
 
+class ApacheLog < ScannableLog
+  def basedir
+    $saved[:httpdroot]
+  end
+  self.matches = {
+  }
+end
+
 class ApacheErrorLog < ScannableLog
   def basedir
     $saved[:httpdroot]
@@ -892,6 +907,7 @@ class ApacheConf < ScannableFile
 
   self.matches = {
     %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocumentRoot}],
+    %r(^\s*CustomLog\s+(\S+))i    => [{:alsocheck => ApacheLog}],
     %r(^\s*ErrorLog\s+(\S+))i     => [{:alsocheck => ApacheErrorLog}],
     %r(^\s*Include\s+(\S+))i      => [{:alsocheck => ApacheConf}],
     %r(^\s*User\s+(\S+))i         => [{:alsocheck => WebUser}],
