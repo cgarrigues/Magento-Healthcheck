@@ -597,7 +597,16 @@ class Apache < Collection
   end
 end
 
-class PhpFpmErrorLog < ScannableFile
+class ScannableLog < ScannableFile
+  def scan
+    super
+    unless $saved[:rotatedlogs].member? filename
+      printline colorize(:redbg) + "#{filename} is not being rotated by logrotate" + cleareol + colorize(:off)
+    end
+  end
+end
+
+class PhpFpmErrorLog < ScannableLog
   self.matches = {
   }
 end
@@ -750,7 +759,7 @@ class WebUser < Collection
   end
 end
 
-class NginxErrorLog < ScannableFile
+class NginxErrorLog < ScannableLog
   self.matches = {
     %r(\[error\].*\] (.*)$) => [{:flag => nil,
                                  :note => "Investigate this error."}],
@@ -768,7 +777,7 @@ class NginxConf < ScannableFile
   }
 end
 
-class MysqlLog < ScannableFile
+class MysqlLog < ScannableLog
   self.matches = {
     %r(^(\d+\s+\d+:\d+:\d+).*(error))i                              => [{:flag => "YYMMDD HH:MM:SS"},
                                                                         {:flag => nil}],
@@ -857,7 +866,7 @@ class Httpdt < ShellCommand
   }
 end
 
-class ApacheErrorLog < ScannableFile
+class ApacheErrorLog < ScannableLog
   def basedir
     $saved[:httpdroot]
   end
@@ -903,7 +912,7 @@ class HttpdV < ShellCommand
   }
 end
 
-class MagentoExceptionLog < ScannableFile
+class MagentoExceptionLog < ScannableLog
   self.matches = {
     %r(exception\s'([^']*)' with message '([^']*)') => [{:flag => nil},
                                                         {:flag => nil,
@@ -918,7 +927,7 @@ end
 class HtAccess < ScannableFile
 end
 
-class Messages < ScannableFile
+class Messages < ScannableLog
   def initialize
     super('/var/log/messages')
   end
