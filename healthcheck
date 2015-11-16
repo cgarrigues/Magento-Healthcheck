@@ -674,10 +674,10 @@ class DocumentRoot < Scannable
       end
     end
     if (rootpath + 'app/Mage.php').exist?
-      alsoscan [MagVersion, rootpath]
+      alsoscan [MagentoVersion, rootpath]
     end
     if (logpath = rootpath + 'var/log/exception.log').exist?
-      alsoscan [MagExceptionLog, logpath]
+      alsoscan [MagentoExceptionLog, logpath]
     end
     if (htaccesspath = rootpath + '.htaccess').exist?
       alsoscan [HtAccess, htaccesspath]
@@ -897,7 +897,7 @@ class HttpdV < ShellCommand
   }
 end
 
-class MagExceptionLog < ScannableFile
+class MagentoExceptionLog < ScannableFile
   self.matches = {
     %r(exception\s'([^']*)' with message '([^']*)') => [{:flag => nil},
                                                         {:flag => nil,
@@ -1102,9 +1102,6 @@ class Mysql < Collection
 end
 
 class MagentoVersion < ShellCommand
-end
-
-class MagVersion < MagentoVersion
   attr_reader :path
   
   def initialize(path)
