@@ -773,13 +773,13 @@ end
 
 class NginxConf < ScannableFile
   self.matches = {
-    %r(^\s*include\s+(\S+);)         => [{:alsocheck => NginxConf}],
-    %r(^\s*worker_processes\s+(\d+)) => [{"="        => :processorcount}],
-    %r(^\s*user\s+(\d+))             => [{:alsocheck => WebUser}],
-    %r(^\s*access_log\s+(\S+))       => [{:alsocheck => NginxLog}],
-    %r(^\s*error_log\s+(\S+))        => [{:alsocheck => NginxErrorLog}],
-    %r(^\s*server_tokens\s+(\S+))    => [{"="        => "off",
-                                          :note      => "turn off server_tokens for security reasons"}],
+    %r(^\s*include\s+(\S+);)                => [{:alsocheck => NginxConf}],
+    %r(^\s*worker_processes\s+(\d+))        => [{"="        => :processorcount}],
+    %r(^\s*user\s+(\d+))                    => [{:alsocheck => WebUser}],
+    %r(^\s*access_log\s+([/a-z0-9_\.\*-]+)) => [{:alsocheck => NginxLog}],
+    %r(^\s*error_log\s+([/a-z0-9_\.\*-]+))  => [{:alsocheck => NginxErrorLog}],
+    %r(^\s*server_tokens\s+(\S+))           => [{"="        => "off",
+                                                 :note      => "turn off server_tokens for security reasons"}],
   }
 end
 
@@ -906,11 +906,11 @@ class ApacheConf < ScannableFile
   end
 
   self.matches = {
-    %r(^\s*DocumentRoot\s+(\S+))i => [{:alsocheck => DocumentRoot}],
-    %r(^\s*CustomLog\s+(\S+))i    => [{:alsocheck => ApacheLog}],
-    %r(^\s*ErrorLog\s+(\S+))i     => [{:alsocheck => ApacheErrorLog}],
-    %r(^\s*Include\s+(\S+))i      => [{:alsocheck => ApacheConf}],
-    %r(^\s*User\s+(\S+))i         => [{:alsocheck => WebUser}],
+    %r(^\s*DocumentRoot\s+(\S+))i           => [{:alsocheck => DocumentRoot}],
+    %r(^\s*CustomLog\s+([/a-z0-9_\.\*-]+))i => [{:alsocheck => ApacheLog}],
+    %r(^\s*ErrorLog\s+([/a-z0-9_\.\*-]+))i  => [{:alsocheck => ApacheErrorLog}],
+    %r(^\s*Include\s+(\S+))i                => [{:alsocheck => ApacheConf}],
+    %r(^\s*User\s+(\S+))i                   => [{:alsocheck => WebUser}],
   }
 end
 
