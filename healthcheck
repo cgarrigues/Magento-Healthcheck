@@ -5,7 +5,6 @@ require 'rexml/document'
 require 'socket'
 require 'optparse'
 require 'pathname'
-require 'socket'
 require 'resolv'
 
 $options = Hash.new
