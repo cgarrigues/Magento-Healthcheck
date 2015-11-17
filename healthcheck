@@ -1,9 +1,12 @@
 #!/usr/bin/env ruby
+# coding: utf-8
 
 require 'rexml/document'
 require 'socket'
 require 'optparse'
 require 'pathname'
+require 'socket'
+require 'resolv'
 
 $options = Hash.new
 $saved = Hash.new
@@ -1267,8 +1270,32 @@ class MagentoXmlFile < ScannableFile
   end
 end
 
+class Hostname < Scannable
+  def descriptor
+    self.class
+  end
+
+  def label
+    ""
+  end
+
+  def scan
+    Resolv::DNS.open do |dns|
+      printheader
+      $saved[:hostname] = Socket.gethostname
+      if ($saved[:hostname] =~ %r(\.)) and (resources = dns.getresources($saved[:hostname], Resolv::DNS::Resource::IN::A))
+        unless $options[:quiet]
+          printline colorize(:invert) + "#{$saved[:hostname]} is in the DNS." + cleareol + colorize(:off)
+        end
+      else
+        printline colorize(:redbg) + "#{$saved[:hostname]} is not in the DNS; may cause issues with outgoing email, etc." + cleareol + colorize(:off)
+      end
+    end
+  end
+end
+
 $oldchecks = []
-$checks = [CpuInfo, LogRotate, UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
+$checks = [CpuInfo, LogRotate, Hostname, UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
 
 def alsoscan(item)
   unless ($checks.include? item) or ($oldchecks.include? item)
@@ -1289,6 +1316,7 @@ def showsummary
   if $saved[:apache_version]
     puts cleareol + "Apache version: #{$saved[:apache_version]}"
   end
+  puts cleareol + "Hostname: #{$saved[:hostname]}"
   puts cleareol + "Number of processors: #{$saved[:processorcount]}"
   if $saved[:nginx]
     puts cleareol + "Running nginx"
