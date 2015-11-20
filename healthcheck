@@ -476,6 +476,8 @@ class Dmesg < ShellCommand
                                          :note => "SELinux being enabled and not properly configured may break many things."}],
     %r((segfault))                  => [{:flag => nil,
                                          :note => "Any segfaulting process should be understood."}],
+    %r((Out of memory:.*))          => [{:flag => "Ran out of memory",
+                                         :note => "Running out of memory can cause performance and intermittent problems"}],
   }
 end
 
@@ -611,28 +613,34 @@ end
 
 class PhpFpmErrorLog < ScannableLog
   self.matches = {
+    %r((seems busy)) => [{:flag => "Do this"}],
+    %r(said into stderr: "(.*)") => [{:flag => "Investigate this"}],
   }
+end
+
+class PhpFpmSlowLog < ScannableLog
 end
 
 class PhpFpmConf < ScannableFile
   self.matches = {
     %r(^\s*include\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmConf}],
     %r(^\s*error_log\s*=\s*(\S+))                   => [{:alsocheck => PhpFpmErrorLog}],
+    %r(^\s*slowlog\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmSlowLog}],
     %r(^\s*emergency_restart_interval\s*=\s*(\S+))  => [{:save      => :emergencyrestartinterval}],
     %r(^\s*emergency_restart_threshold\s*=\s*(\S+)) => [{:save      => :emergencyrestartthreshold}],
     %r(^\s*process_control_timeout\s*=\s*(\S+))     => [{:save      => :processcontroltimeout}],
   }
 
   def process_saved
-    unless $saved[:emergencyrestartinterval]
-      printline colorize(:invert) + "set emergency_restart_interval" + colorize(:off)
-    end
-    unless $saved[:emergencyrestartthreshold]
-      printline colorize(:invert) + "set *emergency_restart_threshold" + colorize(:off)
-    end
-    unless $saved[:processcontroltimeout]
-      printline colorize(:invert) + "set process_control_timeout" + colorize(:off)
-    end
+#    unless $saved[:emergencyrestartinterval]
+#      printline colorize(:invert) + "set emergency_restart_interval" + colorize(:off)
+#    end
+#    unless $saved[:emergencyrestartthreshold]
+#      printline colorize(:invert) + "set emergency_restart_threshold" + colorize(:off)
+#    end
+#    unless $saved[:processcontroltimeout]
+#      printline colorize(:invert) + "set process_control_timeout" + colorize(:off)
+#    end
   end
 end
 
@@ -722,7 +730,7 @@ class DocumentRoot < Scannable
           printline colorize(:redbg) + e.message + colorize(:off)
         end
       end
-    end
+      end
     return(rootpaths)
   end
   
@@ -763,11 +771,17 @@ class WebUser < Collection
 end
 
 class NginxLog < ScannableLog
+  def basedir
+    $saved[:nginxroot]
+  end
   self.matches = {
   }
 end
 
 class NginxErrorLog < ScannableLog
+  def basedir
+    $saved[:nginxroot]
+  end
   self.matches = {
     %r(\[error\].*\] (.*)$) => [{:flag => nil,
                                  :note => "Investigate this error."}],
@@ -775,10 +789,14 @@ class NginxErrorLog < ScannableLog
 end
 
 class NginxConf < ScannableFile
+  def basedir
+    $saved[:nginxroot]
+  end
   self.matches = {
     %r(^\s*include\s+(\S+);)                => [{:alsocheck => NginxConf}],
     %r(^\s*worker_processes\s+(\d+))        => [{"="        => :processorcount}],
     %r(^\s*user\s+(\d+))                    => [{:alsocheck => WebUser}],
+    %r(^\s*root\s+([/a-z0-9_\.\*-]+))       => [{:alsocheck => DocumentRoot}],
     %r(^\s*access_log\s+([/a-z0-9_\.\*-]+)) => [{:alsocheck => NginxLog}],
     %r(^\s*error_log\s+([/a-z0-9_\.\*-]+))  => [{:alsocheck => NginxErrorLog}],
     %r(^\s*server_tokens\s+(\S+))           => [{"="        => "off",
@@ -797,15 +815,15 @@ end
 
 class SysCrontab < ScannableFile
   self.matches = {
-    %r(^[\#]+(cron.sh))  => [{:count => :cron}],
-    %r(^[\#]+(cron.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
+    %r(^[\#]+(cron\.sh))  => [{:count => :cron}],
+    %r(^[\#]+(cron\.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
   }
 end
 
 class UserCrontab < ScannableFile
   self.matches = {
-    %r(^[\#]+(cron.sh))  => [{:count => :cron}],
-    %r(^[\#]+(cron.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
+    %r(^[\#]+(cron\.sh))  => [{:count => :cron}],
+    %r(^[\#]+(cron\.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
   }
 end
 
@@ -828,6 +846,7 @@ class NginxV < ShellCommand
   end
 
   self.matches = {
+    %r(--prefix=([/a-z\.]+))         => [{:save => :nginxroot}],
     %r(--conf-path=([/a-z\.]+))      => [{:alsocheck => NginxConf}],
     %r(--error-log-path=([/a-z\.]+)) => [{:alsocheck => NginxErrorLog}],
     %r(--http-log-path=([/a-z\.]+))  => [{:alsocheck => NginxLog}],
@@ -1357,11 +1376,19 @@ end
 while check = $checks.shift do
   if check.is_a? Array
     objclass = check.shift
-    item = objclass.new *check
-    $oldchecks.unshift [objclass, *check.dup]
+    begin
+      item = objclass.new *check
+      $oldchecks.unshift [objclass, *check.dup]
+    rescue Exception => e
+      puts colorize(:redbg) + e.message + colorize(:off)
+    end
   else
     $oldchecks.unshift check
-    item = check.new
+    begin
+      item = check.new
+    rescue Exception => e
+      puts colorize(:redbg) + e.message + colorize(:off)
+    end
   end
   item.scan
   item.heading = nil
