@@ -603,7 +603,7 @@ class Apache < Collection
 end
 
 class ScannableLog < ScannableFile
-  def logisrotated(filename)
+  def logisrotated?(filename)
     $saved[:rotatedlogs].any do |logpat|
       File.fnmatch? logpat, filename, File::FNM_PATHNAME
     end
@@ -611,7 +611,7 @@ class ScannableLog < ScannableFile
 
   def scan
     super
-    unless logisrotated filename
+    unless logisrotated? filename
       printline colorize(:redbg) + "#{filename} is not being rotated by logrotate" + cleareol + colorize(:off)
     end
   end
