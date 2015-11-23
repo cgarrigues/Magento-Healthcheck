@@ -1123,7 +1123,7 @@ class MysqlVariables < MysqlCommand
     %r(innodb_log_file_size\s(\S+)) => [{">"   => 128*1024*1024,
                                          :note => "innodb_log_file_size should be >=128MB."}],
     %r(innodb_buffer_pool_size\s(\S+)) => [{">"   => 128*1024*1024,
-                                         :note => "innodb_buffer_pool1_size should be >=128MB."}],
+                                         :note => "innodb_buffer_pool_size should be >=128MB."}],
     %r(max_heap_table_size\s(\S+))  => [{">"   => 128*1024*1024,
                                          :save => :heap_table_size}],
     %r(tmp_table_size\s(\S+))       => [{">"   => 128*1024*1024,
