@@ -884,8 +884,7 @@ class Ps < ShellCommand
     %r(redis-server\s+([a-z\./]+))        => [{:alsocheck => RedisConf,
                                                :save      => :redis}],
     %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
-    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf,
-                                               :alsocheck => Php}],
+    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
   }
   
 end
