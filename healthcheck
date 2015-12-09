@@ -867,24 +867,97 @@ class NginxExe < Collection
     end
 end
 
+class PhpV < ShellCommand
+  self.cmd = 'php -v'
+  self.matches = {
+    %r(PHP (\d+\.\d+)) => [{"ne" => "5.7"}],
+  }
+end
+
+class PhpM < ShellCommand
+  self.cmd = 'php -m'
+  self.matches = {
+    %r(^(bcmath)$)   => [{:save => :bcmath}],
+    %r(^(memcache)$) => [{:save => :cache}],
+    %r(^(redis)$)    => [{:save => :cache}],
+  }
+
+  def process_saved
+    unless $saved[:bcmath]
+      printline colorize(:invert) + "bcmath is a required php module" + colorize(:off)
+    end
+    unless $saved[:cache]
+      printline colorize(:invert) + "either memcache or redis modules are required" + colorize(:off)
+    end
+  end
+end
+
+class PhpI < ShellCommand
+  self.cmd = 'php -i'
+  self.matches = {
+                           %r(^([a-z]+)$)i                                 => [{:save => :section}],
+    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]  => [{"="   => 1440},
+                                                                               {"="   => 1440}],
+    [:section, "session",  %r(^session.gc_probability => (\d+) => (\d+))]  => [{"="   => 1},
+                                                                               {"="   => 1}],
+    [:section, "session",  %r(^session.cookie_lifetime => (\d+) => (\d+))] => [{"="   => 0},
+                                                                               {"="   => 0}],
+    [:section, "Core",     %r(^PHP Version => (\S+))]                      => [{:save => :php_version}],
+    [:section, "Core",     %r(^memory_limit => (\d+)M => (\d+)M)]          => [{">="  => 256},
+                                                                               {">="  => 256}],
+    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]      => [{"="   => 18000,
+                                                                                :note => "max_execution_time should be set very high to assure that indexing completes."},
+                                                                               {"="   => 18000}],
+    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [{">="  => 2000,
+                                                                                :note => "max_input_vars should be from 2000 to 5000 (or even more if needed)"},
+                                                                               {">="  => 2000}],
+    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [{"eq"  => "no value",
+                                                                                :note => "auto_prepend_file may cause issues"},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]          => [{"eq"  => "no value",
+                                                                                :note => "auto_append_file may cause issues"},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]         => [{"eq"  => "no value",
+                                                                                :note => "disable_functions may cause issues"},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]              => [{"eq"  => "no value",
+                                                                                :note => "open_basedir is not supported."},
+                                                                               {"eq"  => "no value"}],
+    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                 => [{"eq"  => "Off",
+                                                                                :note => "safe_mode is not supported."},
+                                                                               {"eq"  => "Off"}],
+    [:section, "memcache", %r(^Version => (\S+))]                          => [{"eq"  => "3.0.5",
+                                                                                :save => :memcache_version}],
+    [:section, "mysql",    %r(^Client API version => (.+))]                => [{:save => :mysql_client_api_version}],
+  }
+end
+
+class Php < Collection
+  def initialize(*args)
+    super
+    @children = [PhpV, PhpM, PhpI]
+  end
+end
+
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    %r(^root.*\s([/a-z]*apache2?)$)       => [{:alsocheck => Apache,
-                                               :save      => :apache}],
-    %r(^root.*\s([/a-z]*httpd)$)          => [{:alsocheck => Apache,
-                                               :save      => :apache}],
+    %r(^root.*\s([/a-z]*apache2?))       => [{:alsocheck => Apache,
+                                              :save      => :apache}],
+    %r(^root.*\s([/a-z]*httpd))          => [{:alsocheck => Apache,
+                                              :save      => :apache}],
     %r(nginx: master process .* -c (\S*)) => [{:alsocheck => NginxConf}],
     %r(nginx: master process (\S*))       => [{:alsocheck => NginxExe,
                                                :save      => :nginx}],
     %r((memcached).*-m (\d+))             => [{:save      => :memcache},
-                                              {">"        => 1024}],
+                                              {">="        => 1024}],
     %r(redis-server\s+([\d\.]+):(\d+))    => [{:alsocheck => Redis,
                                                :save      => :redis}],
     %r(redis-server\s+([a-z\./]+))        => [{:alsocheck => RedisConf,
                                                :save      => :redis}],
     %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
-    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
+    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf,
+                                               :alsocheck => Php}],
   }
   
 end
@@ -993,78 +1066,6 @@ class HttpdS < ShellCommand
     %r(namevhost (\S+)\s+\(([^:]+):)      => [{:okay => nil},
                                               {:alsocheck => ApacheConf}],
   }
-end
-
-class PhpV < ShellCommand
-  self.cmd = 'php -v'
-  self.matches = {
-    %r(PHP (\d+\.\d+)) => [{"ne" => "5.7"}],
-  }
-end
-
-class PhpM < ShellCommand
-  self.cmd = 'php -m'
-  self.matches = {
-    %r(^(bcmath)$)   => [{:save => :bcmath}],
-    %r(^(memcache)$) => [{:save => :cache}],
-    %r(^(redis)$)    => [{:save => :cache}],
-  }
-
-  def process_saved
-    unless $saved[:bcmath]
-      printline colorize(:invert) + "bcmath is a required php module" + colorize(:off)
-    end
-    unless $saved[:cache]
-      printline colorize(:invert) + "either memcache or redis modules are required" + colorize(:off)
-    end
-  end
-end
-
-class PhpI < ShellCommand
-  self.cmd = 'php -i'
-  self.matches = {
-                           %r(^([a-z]+)$)i                                 => [{:save => :section}],
-    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]  => [{"="   => 1440},
-                                                                               {"="   => 1440}],
-    [:section, "session",  %r(^session.gc_probability => (\d+) => (\d+))]  => [{"="   => 1},
-                                                                               {"="   => 1}],
-    [:section, "session",  %r(^session.cookie_lifetime => (\d+) => (\d+))] => [{"="   => 0},
-                                                                               {"="   => 0}],
-    [:section, "Core",     %r(^PHP Version => (\S+))]                      => [{:save => :php_version}],
-    [:section, "Core",     %r(^memory_limit => (\d+)M => (\d+)M)]          => [{">="  => 256},
-                                                                               {">="  => 256}],
-    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]      => [{"="   => 18000,
-                                                                                :note => "max_execution_time should be set very high to assure that indexing completes."},
-                                                                               {"="   => 18000}],
-    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [{">="  => 2000,
-                                                                                :note => "max_input_vars should be from 2000 to 5000 (or even more if needed)"},
-                                                                               {">="  => 2000}],
-    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [{"eq"  => "no value",
-                                                                                :note => "auto_prepend_file may cause issues"},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]          => [{"eq"  => "no value",
-                                                                                :note => "auto_append_file may cause issues"},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]         => [{"eq"  => "no value",
-                                                                                :note => "disable_functions may cause issues"},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]              => [{"eq"  => "no value",
-                                                                                :note => "open_basedir is not supported."},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                 => [{"eq"  => "Off",
-                                                                                :note => "safe_mode is not supported."},
-                                                                               {"eq"  => "Off"}],
-    [:section, "memcache", %r(^Version => (\S+))]                          => [{"eq"  => "3.0.5",
-                                                                                :save => :memcache_version}],
-    [:section, "mysql",    %r(^Client API version => (.+))]                => [{:save => :mysql_client_api_version}],
-  }
-end
-
-class Php < Collection
-  def initialize(*args)
-    super
-    @children = [PhpV, PhpM, PhpI]
-  end
 end
 
 class HttpdM < ShellCommand
