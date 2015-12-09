@@ -950,14 +950,13 @@ class Ps < ShellCommand
     %r(nginx: master process (\S*))       => [{:alsocheck => NginxExe,
                                                :save      => :nginx}],
     %r((memcached).*-m (\d+))             => [{:save      => :memcache},
-                                              {">="        => 1024}],
+                                              {">="       => 1024}],
     %r(redis-server\s+([\d\.]+):(\d+))    => [{:alsocheck => Redis,
                                                :save      => :redis}],
     %r(redis-server\s+([a-z\./]+))        => [{:alsocheck => RedisConf,
                                                :save      => :redis}],
     %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
-    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf,
-                                               :alsocheck => Php}],
+    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
   }
   
 end
@@ -969,6 +968,7 @@ class Httpdt < ShellCommand
   end
 
   self.matches = {
+    %r(.*bad user name\s+(\w+))  => [{:flag => nil}],
     %r((.*warn.*))  => [{:flag => "!!!! WARNING !!!!"}],
     %r((.*error.*)) => [{:flag => "!!!!!! ERROR !!!!!!"}],
     %r((Syntax OK)) => [{:okay => nil}],
@@ -1032,6 +1032,7 @@ end
 
 class MagentoExceptionLog < ScannableLog
   self.matches = {
+    %r(^\d\d\d\d-\d\d-\d\d)                         => :heading,
     %r(exception\s'([^']*)' with message '([^']*)') => [{:flag => nil},
                                                         {:flag => nil,
                                                          :note => "Investigate this exception."}],
@@ -1322,7 +1323,7 @@ class Hostname < Scannable
 end
 
 $oldchecks = []
-$checks = [CpuInfo, LogRotate, Hostname, UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
+$checks = [CpuInfo, LogRotate, Hostname, UnameA, Netstat, Ifconfig, DfHt, DfHit, Ps, Php, SysCrontabs, Sysctl, Iostat, Vmstat, Dmesg, Messages, Lsmod, Free, Uptime, Last]
 
 def alsoscan(item)
   unless ($checks.include? item) or ($oldchecks.include? item)
