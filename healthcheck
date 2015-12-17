@@ -602,10 +602,29 @@ class Apache < Collection
 end
 
 class ScannableLog < ScannableFile
+
+  # This isn't necessary in Ruby 2.x
+  def realpath(filename)
+    if filename == (Pathname.new '/')
+      Pathname.new filename
+    elsif File.symlink? filename
+      Pathname.new File.readlink filename
+    else
+      dirname = Pathname.new File.dirname filename
+      basename = Pathname.new File.basename filename
+      linkpath = realpath dirname
+      if linkpath =~ %r(^/)
+        linkpath + basename
+      else
+        dirname.dirname + linkpath + basename
+      end
+    end
+  end
+  
   def logisrotated?(filename)
     if $saved[:rotatedlogs]
       $saved[:rotatedlogs].any? do |logpat|
-        File.fnmatch? logpat, filename, File::FNM_PATHNAME
+        File.fnmatch? realpath(logpat), realpath(filename), File::FNM_PATHNAME
       end
     end
   end
