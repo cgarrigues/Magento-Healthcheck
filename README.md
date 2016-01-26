@@ -13,10 +13,10 @@ chmod +x healthcheck
 ./healthcheck
 ```
 
-The output of the script include ANSI escape characters.  If you view the output through less, you will want to use the -r flag:
+The output of the script include ANSI escape characters.  If you view the output through less, you will want to use the -R flag:
 
 ```bash
-./healthcheck | less -r
+./healthcheck | less -R
 ```
 
 You can also only look at lines that may be of concern with the --quiet flag:
