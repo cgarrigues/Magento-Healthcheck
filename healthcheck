@@ -639,8 +639,11 @@ end
 
 class PhpFpmErrorLog < ScannableLog
   self.matches = {
-    %r((seems busy)) => [{:flag => "Do this"}],
-    %r(said into stderr: "(.*)") => [{:flag => "Investigate this"}],
+    %r((seems busy))                                       => [{:flag => "Do this"}],
+    %r(script '(.*)' \(request: ".*"\) executing too slow) => [{:flag => "Investigate this"}],
+    %r(ERROR: (.*)$)                                       => [{:flag => nil}],
+    %r((exited on signal 11 \(SIGSEGV\)) after .* seconds from start) => [{:flag => "SEGVs are not good"}],
+    %r(said into stderr: "(.*)")                           => [{:flag => "Investigate this"}],
   }
 end
 
@@ -841,15 +844,15 @@ end
 
 class SysCrontab < ScannableFile
   self.matches = {
-    %r(^[\#]+(cron\.sh))  => [{:count => :cron}],
-    %r(^[\#]+(cron\.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
+    %r(^[^\#]+(/cron\.sh))  => [{:count => :cron}],
+    %r(^[^\#]+(/cron\.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
   }
 end
 
 class UserCrontab < ScannableFile
   self.matches = {
-    %r(^[\#]+(cron\.sh))  => [{:count => :cron}],
-    %r(^[\#]+(cron\.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
+    %r(^[^\#]+(/cron\.sh))  => [{:count => :cron}],
+    %r(^[^\#]+(/cron\.php)) => [{:flag  => "should call cron.sh, not cron.php"}],
   }
 end
 
