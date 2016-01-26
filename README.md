@@ -1,9 +1,9 @@
 # Magento-Healthcheck
 ruby script to perform a health check of a magento system
 
-Note that many magento systems do not have ruby installed, so you may have to install ruby first. (an aside: I am not prepared to rewrite this in php, sorry; if you want to do that, have at it.)
+Note that some Magento systems do not have ruby installed, so you may have to install ruby first. (an aside: I am not prepared to rewrite this in php, sorry; if you want to do that, have at it.)
 
-Script is not yet ready for prime time and there are many things which are not yet being scanned.
+There are still many items that are not scanned by the script, but it runs reliably and with low impact.
 
 Pull down and execute the script using
 
