@@ -612,7 +612,7 @@ class ScannableLog < ScannableFile
     else
       dirname = Pathname.new File.dirname filename
       basename = Pathname.new File.basename filename
-      linkpath = realpath dirname
+      linkpath = realpath(dirname).to_s
       if linkpath =~ %r(^/)
         linkpath + basename
       else
