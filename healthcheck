@@ -918,7 +918,8 @@ class PhpI < ShellCommand
   self.cmd = 'php -i'
   self.matches = {
                            %r(^([a-z]+)$)i                                 => [{:save => :section}],
-    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]  => [{"="   => 1440},
+    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]  => [{"="   => 1440,
+                                                                                :note => "a large session.gc_lifetime could leave sessions around"},
                                                                                {"="   => 1440}],
     [:section, "session",  %r(^session.gc_probability => (\d+) => (\d+))]  => [{"="   => 1},
                                                                                {"="   => 1}],
@@ -1418,6 +1419,7 @@ while check = $checks.shift do
       $oldchecks.unshift [objclass, *check.dup]
     rescue Exception => e
       puts colorize(:redbg) + e.message + colorize(:off)
+      puts colorize(:redbg) + e.backtrace.join("\n") + colorize(:off)
     end
   else
     $oldchecks.unshift check
@@ -1425,9 +1427,15 @@ while check = $checks.shift do
       item = check.new
     rescue Exception => e
       puts colorize(:redbg) + e.message + colorize(:off)
+      puts colorize(:redbg) + e.backtrace.join("\n") + colorize(:off)
     end
   end
-  item.scan
+  begin
+    item.scan
+    rescue Exception => e
+      puts colorize(:redbg) + e.message + colorize(:off)
+      puts colorize(:redbg) + e.backtrace.join("\n") + colorize(:off)
+    end
   item.heading = nil
   if item.respond_to? :process_saved
     item.process_saved
