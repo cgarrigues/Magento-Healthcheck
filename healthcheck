@@ -1143,7 +1143,7 @@ class MysqlStatus < MysqlCommand
 end
 
 class MysqlVariables < MysqlCommand
-  self.cmd = 'show global variableses'
+  self.cmd = 'show global variables'
   self.matches = {
     %r(innodb_log_file_size\s(\S+))           => [{">="  => 128*1024*1024,
                                                    :note => "innodb_log_file_size should be >=128MB."}],
