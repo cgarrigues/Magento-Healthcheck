@@ -13,6 +13,9 @@ chmod +x healthcheck
 ./healthcheck
 ```
 
+
+Note that although it can collect some data if not run as root, running as root will provide a more thorough report, so please run it that way if possible.
+
 The output of the script include ANSI escape characters.  If you view the output through less, you will want to use the -R flag:
 
 ```bash
