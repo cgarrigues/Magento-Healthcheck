@@ -638,6 +638,10 @@ class ScannableLog < ScannableFile
 end
 
 class PhpFpmErrorLog < ScannableLog
+  def basedir
+    "/opt/php7/usr"
+  end
+
   self.matches = {
     %r((seems busy))                                       => [{:flag => "Do this"}],
     %r(script '(.*)' \(request: ".*"\) executing too slow) => [{:flag => "Investigate this"}],
@@ -976,7 +980,7 @@ class Ps < ShellCommand
                                               {">="       => 1024}],
     %r(redis-server\s+([\d\.]+):(\d+))    => [{:alsocheck => Redis,
                                                :save      => :redis}],
-    %r(redis-server\s+([a-z\./]+))        => [{:alsocheck => RedisConf,
+    %r(redis-server\s+(/[a-z\./]+))        => [{:alsocheck => RedisConf,
                                                :save      => :redis}],
     %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
     %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
@@ -1418,24 +1422,28 @@ while check = $checks.shift do
       item = objclass.new *check
       $oldchecks.unshift [objclass, *check.dup]
     rescue Exception => e
+      puts colorize(:redbg) + objclass.inspect + colorize(:off)
+      puts colorize(:redbg) + check.inspect + colorize(:off)
       puts colorize(:redbg) + e.message + colorize(:off)
-      puts colorize(:redbg) + e.backtrace.join("\n") + colorize(:off)
+      puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
     end
   else
     $oldchecks.unshift check
     begin
       item = check.new
     rescue Exception => e
+      puts colorize(:redbg) + check.inspect + colorize(:off)
       puts colorize(:redbg) + e.message + colorize(:off)
-      puts colorize(:redbg) + e.backtrace.join("\n") + colorize(:off)
+      puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
     end
   end
   begin
     item.scan
-    rescue Exception => e
-      puts colorize(:redbg) + e.message + colorize(:off)
-      puts colorize(:redbg) + e.backtrace.join("\n") + colorize(:off)
-    end
+  rescue Exception => e
+    puts colorize(:redbg) + item.inspect + colorize(:off)
+    puts colorize(:redbg) + e.message + colorize(:off)
+    puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
+  end
   item.heading = nil
   if item.respond_to? :process_saved
     item.process_saved
