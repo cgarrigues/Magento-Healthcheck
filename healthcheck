@@ -693,9 +693,9 @@ end
 class DfHt < ShellCommand
   self.cmd = 'df -hT'
   self.matches = {
-    %r(\s(\d+)\%)   => [{"<"   => 75}],
-    %r(^([\d\.]+):) => [{:flag => "NFS Mount",
-                         :note => "An NFS mounted filesystem isn't necessarily an issue,\n  but if magento is running from this partition, make certain it's performant."}],
+    %r(\s(\d+)\%) => [{"<"   => 75}],
+    %r(^(\S+):)   => [{:flag => "NFS Mount",
+                       :note => "An NFS mounted filesystem isn't necessarily an issue,\n  but if magento is running from this partition, make certain it's performant."}],
   }
 end
 
@@ -969,10 +969,10 @@ end
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    %r(^root.*\s([/a-z]*apache2?))       => [{:alsocheck => Apache,
-                                              :save      => :apache}],
-    %r(^root.*\s([/a-z]*httpd))          => [{:alsocheck => Apache,
-                                              :save      => :apache}],
+    %r(^root.*\s([/a-z]*apache2?\b))      => [{:alsocheck => Apache,
+                                               :save      => :apache}],
+    %r(^root.*\s([/a-z]*httpd\b))         => [{:alsocheck => Apache,
+                                               :save      => :apache}],
     %r(nginx: master process .* -c (\S*)) => [{:alsocheck => NginxConf}],
     %r(nginx: master process (\S*))       => [{:alsocheck => NginxExe,
                                                :save      => :nginx}],
