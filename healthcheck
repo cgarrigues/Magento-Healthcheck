@@ -348,8 +348,13 @@ class Redis < Cache
     %r(connected_clients:(\d+)) => [{">"   => 0}],
   }
   
-  def initialize(*args)
-    super
+  def initialize(ipandport)
+    (ipaddress, port) = ipandport.split(':')
+    if port
+      super(ipaddress, port)
+    else
+      super(ipandport, "")
+    end
     if $saved[:network_addrs].include? ipaddress
       puts colorize(:invert) + "Redis is on local host. Up to 50% performance boost if switched to Unix sockets." + colorize(:off)
     end
@@ -643,7 +648,8 @@ class PhpFpmErrorLog < ScannableLog
   end
 
   self.matches = {
-    %r((seems busy))                                       => [{:flag => "Do this"}],
+    %r((seems busy).*)                                     => [{:flag => "Do this"}],
+    %r((server reached pm.max_children setting).*)         => [{:flag => "Do this"}],
     %r(script '(.*)' \(request: ".*"\) executing too slow) => [{:flag => "Investigate this"}],
     %r(ERROR: (.*)$)                                       => [{:flag => nil}],
     %r((exited on signal 11 \(SIGSEGV\)) after .* seconds from start) => [{:flag => "SEGVs are not good"}],
@@ -978,11 +984,11 @@ class Ps < ShellCommand
                                                :save      => :nginx}],
     %r((memcached).*-m (\d+))             => [{:save      => :memcache},
                                               {">="       => 1024}],
-    %r(redis-server\s+([\d\.]+):(\d+))    => [{:alsocheck => Redis,
+    %r(redis-server\s+([\d\.]+:\d+))    => [{:alsocheck => Redis,
                                                :save      => :redis}],
     %r(redis-server\s+(/[a-z\./]+))        => [{:alsocheck => RedisConf,
                                                :save      => :redis}],
-    %r(mysqld.*--log-error=([/\.\w]+))    => [{:alsocheck => MysqlLog}],
+    %r(mysqld.*--log-error=([/\.\w-]+))    => [{:alsocheck => MysqlLog}],
     %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
   }
   
@@ -1015,7 +1021,7 @@ class ApacheErrorLog < ScannableLog
     $saved[:httpdroot]
   end
   self.matches = {
-    %r(\[error\].*\] (.*)$) => [{:flag => nil,
+    %r(\[error\][^\]]*\] (.*)$) => [{:flag => nil,
                                  :note => "Investigate this error."}],
   }
 end
@@ -1059,14 +1065,14 @@ end
 
 class MagentoExceptionLog < ScannableLog
   self.matches = {
-    %r(^\d\d\d\d-\d\d-\d\d)                         => :heading,
-    %r(exception\s'([^']*)' with message '([^']*)') => [{:flag => nil},
-                                                        {:flag => nil,
-                                                         :note => "Investigate this exception."}],
-    %r(app/code/local/([^/]+))                      => [{:flag => "not Magento code",
-                                                         :note => "local code is out of scope for magento support."}],
-    %r(app/code/community/([^/]+))                  => [{:flag => "not Magento code",
-                                                         :note => "community code is out of scope for magento support."}],
+    %r(^\d\d\d\d-\d\d-\d\d)                            => :heading,
+    %r(exception\s'([^']*)' with message '(.*)'[^']*$) => [{:flag => nil},
+                                                           {:flag => nil,
+                                                            :note => "Investigate this exception."}],
+    %r(app/code/local/([^/]+))                         => [{:flag => "not Magento code",
+                                                            :note => "local code is out of scope for magento support."}],
+    %r(app/code/community/([^/]+))                     => [{:flag => "not Magento code",
+                                                            :note => "community code is out of scope for magento support."}],
   }
 end
 
