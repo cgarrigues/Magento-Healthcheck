@@ -368,6 +368,8 @@ end
 class Sysctl < ShellCommand
   self.cmd = 'sysctl -a'
   self.matches = {
+    %r(vm.swappiness = (\d+))            => [{"="   => 0,
+                                              :note => "The kernel will swap only to avoid an out of memory condition, when free memory will be below vm.min_free_kbytes limit."}],
     %r(net.ipv4.tcp_tw_recycle = (\d+))  => [{"="   => 1,
                                               :note => "tcp_tw_recycle = 1 will minimze excess processes in TIME_WAIT or SYN_RECV."}],
     %r(net.ipv4.tcp_tw_reuse = (\d+))    => [{"="   => 1,
