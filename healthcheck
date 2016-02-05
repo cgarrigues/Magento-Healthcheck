@@ -516,11 +516,11 @@ class Uptime < ShellCommand
   self.cmd = 'uptime'
   self.matches = {
     %r(load average: ([\d\.]+), ([\d\.]+), ([\d\.]+)) => [{"<" => 100,
-                                                           :note => "The load overage is unually high."},
+                                                           :note => "The load average is unually high."},
                                                           {"<" => 100,
-                                                           :note => "The load overage is unually high."},
+                                                           :note => "The load average is unually high."},
                                                           {"<" => 100,
-                                                           :note => "The load overage is unually high."}],
+                                                           :note => "The load average is unually high."}],
   }
 end
 
