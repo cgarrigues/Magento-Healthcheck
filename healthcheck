@@ -1436,6 +1436,7 @@ while check = $checks.shift do
       puts colorize(:redbg) + $oldchecks.inspect + colorize(:off)
       puts colorize(:redbg) + e.message + colorize(:off)
       puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
+      item = false
     end
   else
     $oldchecks.unshift check
@@ -1447,20 +1448,22 @@ while check = $checks.shift do
       puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
     end
   end
-  begin
-    item.scan
-  rescue Exception => e
-    puts colorize(:redbg) + item.inspect + colorize(:off)
-    puts colorize(:redbg) + e.message + colorize(:off)
-    puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
-  end
-  item.heading = nil
-  if item.respond_to? :process_saved
-    item.process_saved
-  end
-  if item.respond_to? :also_check
-    item.also_check.reverse.each do |value|
-      alsoscan value
+  if item
+    begin
+      item.scan
+    rescue Exception => e
+      puts colorize(:redbg) + item.inspect + colorize(:off)
+      puts colorize(:redbg) + e.message + colorize(:off)
+      puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
+    end
+    item.heading = nil
+    if item.respond_to? :process_saved
+      item.process_saved
+    end
+    if item.respond_to? :also_check
+      item.also_check.reverse.each do |value|
+        alsoscan value
+      end
     end
   end
   #puts $checks.inspect
