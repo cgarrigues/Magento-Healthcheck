@@ -821,7 +821,7 @@ end
 
 class NginxErrorLog < ScannableLog
   def basedir
-    $saved[:nginxroot]
+    $saved[:nginxroot] || '/'
   end
   self.matches = {
     %r(\[error\].*\] (.*)$) => [{:flag => nil,
@@ -831,7 +831,7 @@ end
 
 class NginxConf < ScannableFile
   def basedir
-    $saved[:nginxroot]
+    $saved[:nginxroot] || '/'
   end
   self.matches = {
     %r(^\s*include\s+(\S+);)                => [{:alsocheck => NginxConf}],
@@ -840,7 +840,7 @@ class NginxConf < ScannableFile
     %r(^\s*root\s+([/a-z0-9_\.\*-]+))       => [{:alsocheck => DocumentRoot}],
     %r(^\s*access_log\s+([/a-z0-9_\.\*-]+)) => [{:alsocheck => NginxLog}],
     %r(^\s*error_log\s+([/a-z0-9_\.\*-]+))  => [{:alsocheck => NginxErrorLog}],
-    %r(^\s*server_tokens\s+(\S+))           => [{"="        => "off",
+    %r(^\s*server_tokens\s+(\w+))           => [{"="        => "off",
                                                  :note      => "turn off server_tokens for security reasons"}],
   }
 end
