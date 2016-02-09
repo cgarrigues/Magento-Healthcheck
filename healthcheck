@@ -612,7 +612,6 @@ class ScannableLog < ScannableFile
 
   # This isn't necessary in Ruby 2.x
   def realpath(filename)
-    filename = Pathname.new filename
     if filename == (Pathname.new '/')
       Pathname.new filename
     elsif File.symlink? filename
