@@ -612,6 +612,7 @@ class ScannableLog < ScannableFile
 
   # This isn't necessary in Ruby 2.x
   def realpath(filename)
+    filename = Pathname.new filename
     if filename == (Pathname.new '/')
       Pathname.new filename
     elsif File.symlink? filename
@@ -619,8 +620,8 @@ class ScannableLog < ScannableFile
     else
       dirname = Pathname.new File.dirname filename
       basename = Pathname.new File.basename filename
-      linkpath = realpath(dirname).to_s
-      if linkpath =~ %r(^/)
+      linkpath = realpath(dirname)
+      if %r(^/) =~ linkpath.to_s
         linkpath + basename
       else
         dirname.dirname + linkpath + basename
