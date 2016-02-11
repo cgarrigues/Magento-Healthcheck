@@ -251,9 +251,12 @@ class Scannable
         end
       end
     end
+    if $? and $?.exitstatus > 0
+      printline colorize(:redbg) + "Shell return code #{$?.inspect}" + cleareol + colorize(:off)
+    end
     if self.class.matches == {}
       printline colorize(:invert) + 'No match rules defined yet' + cleareol + colorize(:off)
-    end
+      end
     $notes.each do |note|
       puts cleareol + note
     end
@@ -482,6 +485,8 @@ class Dmesg < ShellCommand
                                          :note => "SELinux being enabled and not properly configured may break many things."}],
     %r((segfault))                  => [{:flag => nil,
                                          :note => "Any segfaulting process should be understood."}],
+    %r((\w+) invoked oom-killer)    => [{:flag => "Ran out of memory",
+                                         :note => "Running out of memory can cause performance and intermittent problems"}],
     %r((Out of memory:.*))          => [{:flag => "Ran out of memory",
                                          :note => "Running out of memory can cause performance and intermittent problems"}],
   }
@@ -545,6 +550,8 @@ class Ifconfig < ShellCommand
   self.cmd = 'ifconfig -a'
   self.matches = {
     %r(^(\S+)\s)                                                => [{:alsocheck => Ethtool}],
+    %r(inet (\S+)\s)                                       => [{:collect => :network_addrs}],
+    %r(inet6 \s*([0-9a-f\:]+))                             => [{:collect => :network_addrs}],
     %r(inet addr:(\S+)\s)                                       => [{:collect => :network_addrs}],
     %r(inet6 addr:\s*([0-9a-f\:]+))                             => [{:collect => :network_addrs}],
     %r(errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+))   => [{"=" => 0,
@@ -1242,6 +1249,9 @@ class MagentoVersion < ShellCommand
         printline colorize(:redbg) + "couldn't read the version" + colorize(:off)
       end
     end
+    if $? and $?.exitstatus > 0
+      printline colorize(:redbg) + "Shell return code #{$?.inspect}" + cleareol + colorize(:off)
+    end
   end
 end
 
@@ -1402,7 +1412,9 @@ def showsummary
   if $saved[:mysql_client_api_version]
     puts cleareol + "Mysql Client API version: #{$saved[:mysql_client_api_version]}"
   end
-  puts cleareol + "Network interfaces: #{$saved[:network_addrs].join(', ')}"
+  if $saved[:network_addrs]
+    puts cleareol + "Network interfaces: #{$saved[:network_addrs].join(', ')}"
+  end
   puts cleareol + "Magento roots:"
   if $saved[:magento_roots]
     puts cleareol + "\t" + $saved[:magento_roots].join("\n\t")
