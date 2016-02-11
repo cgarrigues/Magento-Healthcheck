@@ -549,9 +549,9 @@ end
 class Ifconfig < ShellCommand
   self.cmd = 'ifconfig -a'
   self.matches = {
-    %r(^(\S+)\s)                                                => [{:alsocheck => Ethtool}],
-    %r(inet (?:addr:)?(\S+)\s)                                       => [{:collect => :network_addrs}],
-    %r(inet6 (?:addr:)?\s*([0-9a-f\:]+))                             => [{:collect => :network_addrs}],
+    %r(^(\w+)\s)                                                => [{:alsocheck => Ethtool}],
+    %r(inet (?:addr:)?(\S+)\s)                                  => [{:collect => :network_addrs}],
+    %r(inet6 (?:addr:)?\s*([0-9a-f\:]+))                        => [{:collect => :network_addrs}],
     %r(errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+))   => [{"=" => 0,
                                                                      :note => "Network errors may indicate physical issues."},
                                                                     {"=" => 0,
