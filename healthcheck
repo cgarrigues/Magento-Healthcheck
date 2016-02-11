@@ -1442,8 +1442,6 @@ while check = $checks.shift do
     rescue Exception => e
       puts colorize(:redbg) + objclass.inspect + colorize(:off)
       puts colorize(:redbg) + check.inspect + colorize(:off)
-      puts colorize(:redbg) + $checks.inspect + colorize(:off)
-      puts colorize(:redbg) + $oldchecks.inspect + colorize(:off)
       puts colorize(:redbg) + e.message + colorize(:off)
       puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
       item = false
