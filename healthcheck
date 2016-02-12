@@ -1425,7 +1425,7 @@ def showsummary
   print colorize(:off)
 end
 
-puts colorize(:redbg) + 'Magento Healthcheck - System time is ' + Time.now.to_s + colorize(:off) + "\n\n"
+puts colorize(:invert) + 'Magento Healthcheck - System time is ' + Time.now.to_s + colorize(:off) + "\n\n"
 
 if Process.uid != 0
     puts colorize(:redbg) + "Not running as root.  May not be able to get all info." + colorize(:off)
