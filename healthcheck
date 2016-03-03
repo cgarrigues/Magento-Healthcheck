@@ -422,7 +422,7 @@ class ScannableFile < Scannable
   attr_reader :filename
   
   def initialize(filename)
-    if %r(^/) =~ filename
+    if filename.to_s =~ %r(^/)
       @filename = filename
     else
       @filename = basedir + '/' + filename
@@ -438,7 +438,7 @@ class ScannableFile < Scannable
   end
 
   def openstream
-    if filename =~ %r(\*)
+    if filename.to_s =~ %r(\*)
       Dir[filename].each do |f|
         alsoscan [self.class, f]
       end
@@ -637,7 +637,7 @@ class ScannableLog < ScannableFile
   def logisrotated?(filename)
     if $saved[:rotatedlogs]
       $saved[:rotatedlogs].any? do |logpat|
-        File.fnmatch? realpath(logpat), realpath(filename), File::FNM_PATHNAME
+        File.fnmatch? realpath(logpat).to_s, realpath(filename), File::FNM_PATHNAME
       end
     end
   end
