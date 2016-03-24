@@ -746,6 +746,9 @@ class DocumentRoot < Scannable
         alsoscan [MagentoXmlFile, etcpath + xmlfile]
       end
     end
+    if (rootpath + 'app/etc/env.php').exist?
+      alsoscan [MagentoEnvFile, rootpath + 'app/etc/env.php']
+    end
     if (rootpath + 'app/Mage.php').exist?
       alsoscan [MagentoVersion, rootpath]
     end
@@ -1226,6 +1229,30 @@ class LogRotate < ScannableFile
   self.matches = {
     %r(^/usr/sbin/logrotate\s+(\S+)) => [{:alsocheck => LogRotateConf}]
   }
+end
+
+class MagentoEnvFile < ShellCommand
+  attr_reader :path
+  
+  def initialize(path)
+    @path = path
+    self.class.cmd = %Q(php -r "\\\$config = include '#{path}'; print 'username=' . \\\$config['db']['connection']['default']['username'] . ';ipaddress=' . \\\$config['db']['connection']['default']['host'] . ';password=' . \\\$config['db']['connection']['default']['password'] . ';dbname=' . \\\$config['db']['connection']['default']['dbname'] . ';';")
+  end
+
+  self.matches = {
+    %r(username=([^;]+))  => [{:save => :username}],
+    %r(ipaddress=([^;]+)) => [{:save => :ipaddress}],
+    %r(password=([^;]+))  => [{:save => :password}],
+    %r(username=([^;]+))  => [{:save => :username}],
+  }
+
+  def also_check
+    ipaddress = $saved[:ipaddress]
+    username  = $saved[:username]
+    password  = $saved[:password]
+    dbname    = $saved[:dbname]
+    alsoscan [Mysql, ipaddress, username, password, dbname]
+  end
 end
 
 class MagentoVersion < ShellCommand
