@@ -317,9 +317,14 @@ class Cache < ShellCommand
 
   def opentcporunixsocket(ipaddress, port)
     if %r(^[\d\.]+$) =~ ipaddress
-      return TCPSocket.open(ipaddress, port)
+      port = Integer port
+      TCPSocket.open(ipaddress, port) do |s|
+        yield s
+      end
     else
-      return UNIXSocket.open(ipaddress)
+      UNIXSocket.open(ipaddress)do |s|
+        yield s
+      end
     end
   end
   
@@ -332,6 +337,7 @@ class Cache < ShellCommand
       end
     rescue Exception => e
       printline colorize(:redbg) + e.message + colorize(:off)
+      puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
     end
   end
 end
@@ -356,7 +362,7 @@ class Redis < Cache
     if port
       super(ipaddress, port)
     else
-      super(ipandport, "")
+      super(ipandport, nil)
     end
     if $saved[:network_addrs] and $saved[:network_addrs].include? ipaddress
       puts colorize(:invert) + "Redis is on local host. Up to 50% performance boost if switched to Unix sockets." + colorize(:off)
@@ -365,6 +371,14 @@ class Redis < Cache
       %r(vm.overcommit_memory = (\d+)) => [{"="   => 1,
                                             :note => "Without overcommit_memory set, redis background save may fail under low memory conditions."}],
     }
+  end
+end
+
+class RedisPort < Redis
+  self.cmd = Redis.cmd
+  self.matches = Redis.matches
+  def initialize(port)
+    super "127.0.0.1:#{port}"
   end
 end
 
@@ -455,6 +469,7 @@ class ScannableFile < Scannable
         end
       rescue Exception => e
         printline colorize(:redbg) + e.message + colorize(:off)
+        puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
       end
     end
   end
@@ -694,6 +709,7 @@ end
 class RedisConf < ScannableFile
   self.matches = {
     %r(^\s*(maxmemory)) => [{:flag => "Don't set maxmemory"}],
+    %r(^\s*port\s*(\d+)) => [{:alsocheck => RedisPort}],
   }
 end
 
@@ -778,6 +794,7 @@ class DocumentRoot < Scannable
           end
         rescue Exception => e
           printline colorize(:redbg) + e.message + colorize(:off)
+          puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
         end
       end
       end
