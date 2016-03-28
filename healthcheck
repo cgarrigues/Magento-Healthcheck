@@ -791,7 +791,7 @@ class DocumentRoot < Scannable
       if etcpath.exist?
         scanroot rootpath
       else
-        printline colorize(:redbg) + rootpath + " is not a magento root." + cleareol + colorize(:off)
+        printline colorize(:redbg) + rootpath.to_s + " is not a magento root." + cleareol + colorize(:off)
         if $options[:findroots]
           findallrootpaths(rootpath).each do |dir|
             printline colorize(:invert) + "But #{dir} is." + cleareol + colorize(:off)
@@ -800,7 +800,7 @@ class DocumentRoot < Scannable
         end
       end
     else
-      printline colorize(:redbg) + rootpath + " does not exist" + colorize(:off)
+      printline colorize(:redbg) + rootpath.to_s + " does not exist" + colorize(:off)
     end
   end
 end
