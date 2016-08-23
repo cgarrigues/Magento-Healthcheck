@@ -1104,9 +1104,9 @@ class MagentoExceptionLog < ScannableLog
     %r(exception\s'([^']*)' with message '(.*)'[^']*$) => [{:flag => nil},
                                                            {:flag => nil,
                                                             :note => "Investigate this exception."}],
-    %r(app/code/local/([^/]+))                         => [{:flag => "not Magento code",
+    %r(app/code/(local/[^/]+))                         => [{:flag => nil,
                                                             :note => "local code is out of scope for magento support."}],
-    %r(app/code/community/([^/]+))                     => [{:flag => "not Magento code",
+    %r(app/code/(community/[^/]+))                     => [{:flag => nil,
                                                             :note => "community code is out of scope for magento support."}],
   }
 end
