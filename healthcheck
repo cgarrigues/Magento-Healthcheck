@@ -298,7 +298,7 @@ class Cache < ShellCommand
   attr_reader :ipaddress
   attr_reader :port
   
-  def initialize(ipaddress, port)
+  def initialize(ipaddress, port=nil)
     @ipaddress = ipaddress
     @port = port
   end
@@ -1024,6 +1024,14 @@ class Ps < ShellCommand
   
 end
 
+class ApacheLog < ScannableLog
+  def basedir
+    $saved[:httpdroot]
+  end
+  self.matches = {
+  }
+end
+
 class Httpdt < ShellCommand
   def initialize(command)
     super()
@@ -1034,15 +1042,8 @@ class Httpdt < ShellCommand
     %r(.*bad user name\s+(\w+))  => [{:flag => nil}],
     %r((.*warn.*))  => [{:flag => "!!!! WARNING !!!!"}],
     %r((.*error.*)) => [{:flag => "!!!!!! ERROR !!!!!!"}],
+    %r(Syntax error on line \d+ of (.*):) => [{:alsocheck => ApacheLog}],
     %r((Syntax OK)) => [{:okay => nil}],
-  }
-end
-
-class ApacheLog < ScannableLog
-  def basedir
-    $saved[:httpdroot]
-  end
-  self.matches = {
   }
 end
 
@@ -1296,6 +1297,7 @@ class MagentoVersion < ShellCommand
     end
     if $? and $?.exitstatus > 0
       printline colorize(:redbg) + "Shell return code #{$?.inspect}" + cleareol + colorize(:off)
+      $? = nil
     end
   end
 end
