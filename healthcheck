@@ -1262,10 +1262,10 @@ class MagentoEnvFile < ShellCommand
   end
 
   self.matches = {
-    %r(username=([^;]+))  => [{:save => :username}],
-    %r(ipaddress=([^;]+)) => [{:save => :ipaddress}],
-    %r(password=([^;]+))  => [{:save => :password}],
-    %r(username=([^;]+))  => [{:save => :username}],
+    %r(username=([^;]*))  => [{:save => :username}],
+    %r(ipaddress=([^;]*)) => [{:save => :ipaddress}],
+    %r(password=([^;]*))  => [{:save => :password}],
+    %r(dbname=([^;]*))  => [{:save => :dbname}],
   }
 
   def also_check
@@ -1273,7 +1273,7 @@ class MagentoEnvFile < ShellCommand
     username  = $saved[:username]
     password  = $saved[:password]
     dbname    = $saved[:dbname]
-    alsoscan [Mysql, ipaddress, username, password, dbname]
+    return [[Mysql, ipaddress, username, password, dbname]]
   end
 end
 
