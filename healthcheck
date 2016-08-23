@@ -463,13 +463,17 @@ class ScannableFile < Scannable
         end
       end
     else
-      begin
-        open(filename) do |s|
-          yield s
+      if File::exists? filename
+        begin
+          open(filename) do |s|
+            yield s
+          end
+        rescue Exception => e
+          printline colorize(:redbg) + e.message + colorize(:off)
+          puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
         end
-      rescue Exception => e
-        printline colorize(:redbg) + e.message + colorize(:off)
-        puts colorize(:redbg) + e.backtrace.join("\n"+colorize(:redbg)) + colorize(:off)
+      else
+        printline colorize(:redbg) + "#{filename} does not exist" + colorize(:off)
       end
     end
   end
