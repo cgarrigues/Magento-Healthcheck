@@ -977,7 +977,7 @@ class PhpI < ShellCommand
                                                                                 :note => "max_execution_time should be set very high to assure that indexing completes."},
                                                                                {"="   => 18000}],
     [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [{">="  => 2000,
-                                                                                :note => "max_input_vars should be from 2000 to 5000 (or even more if needed)"},
+                                                                                :note => "max_input_vars should be from 2000 to 5000 or even more if needed"},
                                                                                {">="  => 2000}],
     [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [{"eq"  => "no value",
                                                                                 :note => "auto_prepend_file may cause issues"},
