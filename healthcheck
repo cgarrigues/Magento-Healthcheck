@@ -253,6 +253,7 @@ class Scannable
     end
     if $? and $?.exitstatus > 0
       printline colorize(:redbg) + "Shell return code #{$?.inspect}" + cleareol + colorize(:off)
+      $? = nil
     end
     if self.class.matches == {}
       printline colorize(:invert) + 'No match rules defined yet' + cleareol + colorize(:off)
