@@ -688,6 +688,15 @@ end
 class PhpFpmSlowLog < ScannableLog
 end
 
+class VarnishVcl < ScannableFile
+  self.matches = {
+                                   %r(^(\S.*?)\s*\{)               => [{:save => :section}],
+     [:section, "backend default", %r(^\s*\.host\s*=\s*"([^"]+)")] => [{:save => :backendhost}],
+     [:section, "backend default", %r(^\s*\.port\s*=\s*"([^"]+)")] => [{:save => :backendport}],
+     [:section, "acl purge",       %r(^\s*"([^"]+)")]              => [{:save => :aclpurge}],
+  }
+end
+
 class PhpFpmConf < ScannableFile
   self.matches = {
     %r(^\s*include\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmConf}],
@@ -1019,12 +1028,13 @@ class Ps < ShellCommand
                                                :save      => :nginx}],
     %r((memcached).*-m (\d+))             => [{:save      => :memcache},
                                               {">="       => 1024}],
-    %r(redis-server\s+([\d\.]+:\d+))    => [{:alsocheck => Redis,
+    %r(redis-server\s+([\d\.]+:\d+))      => [{:alsocheck => Redis,
                                                :save      => :redis}],
-    %r(redis-server\s+(/[a-z\./]+))        => [{:alsocheck => RedisConf,
+    %r(redis-server\s+(/[a-z\./]+))       => [{:alsocheck => RedisConf,
                                                :save      => :redis}],
-    %r(mysqld.*--log-error=([/\.\w-]+))    => [{:alsocheck => MysqlLog}],
+    %r(mysqld.*--log-error=([/\.\w-]+))   => [{:alsocheck => MysqlLog}],
     %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
+    %r(varnishd\s.*-f\s+(/[a-z\./]+))     => [{:alsocheck => VarnishVcl}],
   }
   
 end
@@ -1058,7 +1068,7 @@ class ApacheErrorLog < ScannableLog
   end
   self.matches = {
     %r(\[error\][^\]]*\] (.*)$) => [{:flag => nil,
-                                 :note => "Investigate this error."}],
+                                     :note => "Investigate this error."}],
   }
 end
 
