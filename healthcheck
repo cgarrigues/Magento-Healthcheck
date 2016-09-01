@@ -875,6 +875,17 @@ class NginxConf < ScannableFile
   def basedir
     $saved[:nginxroot] || '/'
   end
+
+  def cleanup(value)
+    if %r(^"(.*)"$) =~ value
+      value = $1
+    end
+    if %r(^(.*)/$) =~ value
+      value = $1
+    end
+    return value
+  end
+  
   self.matches = {
     %r(^\s*include\s+(\S+);)                => [{:alsocheck => NginxConf}],
     %r(^\s*worker_processes\s+(\d+))        => [{"="        => :processorcount}],
@@ -1076,6 +1087,7 @@ class ApacheConf < ScannableFile
   def basedir
     $saved[:httpdroot]
   end
+
   def cleanup(value)
     if %r(^"(.*)"$) =~ value
       value = $1
