@@ -25,15 +25,21 @@ The output of the script include ANSI escape characters.  If you view the output
 You can also only look at lines that may be of concern with the --quiet flag:
 
 ```bash
-
 ./healthcheck --quiet
 ```
-
-To send information to Magento support, use the --verbose option and compress the output into a file and attach that file to the ticket.
+Or with the --verbose flag, to see extra information.
 
 ```bash
-./healthcheck --verbose | bzip2 > $HOSTNAME-health.bz2
+./healthcheck --verbose
 ```
+
+To send information to Magento support, compress the output into a file and attach that file to the ticket.
+
+```bash
+./healthcheck | bzip2 > $HOSTNAME-health.bz2
+```
+
+Do this on all involved servers including web, DB, and caching servers. Magento may possibly ask for the --verbose option.
 
 In a test or dev environment, you may have Magento Roots which are located below the document root.  To locate those, use the --findroots option:
 
