@@ -120,6 +120,9 @@ class Scannable
         $saved[value] = []
       end
       $saved[value].push data
+    elsif test == :toggle
+      $saved[value] = not($saved[value])
+      return true
     else
       if value.class == Symbol
         value = Integer $saved[value]
@@ -1254,7 +1257,11 @@ end
 class MysqlInnodbStatus < MysqlCommand
   self.cmd = 'show engine innodb status\\G'
   self.matches = {
-    %r((Access denied.*)) => [{:flag => "Password issue?"}],
+    %r((Access denied.*))                                       => [{:flag => "Password issue?"}],
+    %r(^(-+)$)                                                  => [{:toggle => :insectionname}],
+    [:insectionname, true,                       %r(^([^-]+)$)] => [{:save => :section}],
+    [:section,       "LATEST FOREIGN KEY ERROR", %r(^(.+)$)]    => [:flag => nil],
+    [:section,       "LATEST DETECTED DEADLOCK", %r(^(.+)$)]    => [:flag => nil],
   }
 end
 
