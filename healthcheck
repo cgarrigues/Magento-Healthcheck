@@ -701,7 +701,11 @@ class PhpFpmConf < ScannableFile
   self.matches = {
     %r(^\s*include\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmConf}],
     %r(^\s*error_log\s*=\s*(\S+))                   => [{:alsocheck => PhpFpmErrorLog}],
+    %r(^\s*listen\s*=\s*(\S+))                      => [{:save      => :phpfpmport}],
+    %r(^\s*pm\s*=\s*(\S+))                          => [{"="        => "dynamic"}],
+    %r(^\s*pm\.max_children\s*=\s*(\S+))            => [{:save      => :phpfpmmaxchildren}],
     %r(^\s*slowlog\s*=\s*(\S+))                     => [{:alsocheck => PhpFpmSlowLog}],
+    %r(^\s*log_level\s*=\s*(\S+))                   => [{:save      => :phpfpmloglevel}],
     %r(^\s*emergency_restart_interval\s*=\s*(\S+))  => [{:save      => :emergencyrestartinterval}],
     %r(^\s*emergency_restart_threshold\s*=\s*(\S+)) => [{:save      => :emergencyrestartthreshold}],
     %r(^\s*process_control_timeout\s*=\s*(\S+))     => [{:save      => :processcontroltimeout}],
@@ -864,10 +868,11 @@ class NginxErrorLog < ScannableLog
     $saved[:nginxroot] || '/'
   end
   self.matches = {
-    %r(PHP Fatal error:\s+(.*)\s+in /) => [{:flag => nil,
-                                            :note => "Investiate PHP error"}],
-    %r(\[error\].*\] (.*)$)            => [{:flag => nil,
-                                            :note => "Investigate this error."}],
+    %r(PHP Fatal error:\s+(.*)\s+in /)                                                => [{:flag => nil,
+                                                                                           :note => "Investiate PHP error"}],
+    %r((upstream sent too big header while reading response header from upstream.*)$) => [{:flag => nil}],
+    %r(\[error\].*\] (.*)$)                                                           => [{:flag => nil,
+                                                                                           :note => "Investigate this error."}],
   }
 end
 
@@ -888,7 +893,6 @@ class NginxConf < ScannableFile
   
   self.matches = {
     %r(^\s*include\s+(\S+);)                => [{:alsocheck => NginxConf}],
-    %r(^\s*worker_processes\s+(\d+))        => [{"="        => :processorcount}],
     %r(^\s*user\s+(\d+))                    => [{:alsocheck => WebUser}],
     %r(^\s*root\s+([/a-z0-9_\.\*-]+))       => [{:alsocheck => DocumentRoot}],
     %r(^\s*access_log\s+([/a-z0-9_\.\*-]+)) => [{:alsocheck => NginxLog}],
@@ -982,41 +986,45 @@ end
 class PhpI < ShellCommand
   self.cmd = 'php -i'
   self.matches = {
-                           %r(^([a-z]+)$)i                                 => [{:save => :section}],
-    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]  => [{"="   => 1440,
-                                                                                :note => "a large session.gc_lifetime could leave sessions around"},
-                                                                               {"="   => 1440}],
-    [:section, "session",  %r(^session.gc_probability => (\d+) => (\d+))]  => [{"="   => 1},
-                                                                               {"="   => 1}],
-    [:section, "session",  %r(^session.cookie_lifetime => (\d+) => (\d+))] => [{"="   => 0},
-                                                                               {"="   => 0}],
-    [:section, "Core",     %r(^PHP Version => (\S+))]                      => [{:save => :php_version}],
-    [:section, "Core",     %r(^memory_limit => (\d+)M => (\d+)M)]          => [{">="  => 256},
-                                                                               {">="  => 256}],
-    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]      => [{"="   => 18000,
-                                                                                :note => "max_execution_time should be set very high to assure that indexing completes."},
-                                                                               {"="   => 18000}],
-    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]          => [{">="  => 2000,
-                                                                                :note => "max_input_vars should be from 2000 to 5000 or even more if needed"},
-                                                                               {">="  => 2000}],
-    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]         => [{"eq"  => "no value",
-                                                                                :note => "auto_prepend_file may cause issues"},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]          => [{"eq"  => "no value",
-                                                                                :note => "auto_append_file may cause issues"},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]         => [{"eq"  => "no value",
-                                                                                :note => "disable_functions may cause issues"},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]              => [{"eq"  => "no value",
-                                                                                :note => "open_basedir is not supported."},
-                                                                               {"eq"  => "no value"}],
-    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                 => [{"eq"  => "Off",
-                                                                                :note => "safe_mode is not supported."},
-                                                                               {"eq"  => "Off"}],
-    [:section, "memcache", %r(^Version => (\S+))]                          => [{"eq"  => "3.0.5",
-                                                                                :save => :memcache_version}],
-    [:section, "mysql",    %r(^Client API version => (.+))]                => [{:save => :mysql_client_api_version}],
+                           %r(^([a-z]+)$)i                                    => [{:save => :section}],
+    [:section, "session",  %r(^session.gc_maxlifetime => (\d+) => (\d+))]     => [{"="   => 1440,
+                                                                                   :note => "a large session.gc_lifetime could leave sessions around"},
+                                                                                  {"="   => 1440}],
+    [:section, "session",  %r(^session.gc_probability => (\d+) => (\d+))]     => [{"="   => 1},
+                                                                                  {"="   => 1}],
+    [:section, "session",  %r(^session.cookie_lifetime => (\d+) => (\d+))]    => [{"="   => 0},
+                                                                                  {"="   => 0}],
+    [:section, "Core",     %r(^log_errors => (\S+))]                          => [{"="   => "On"}],
+    [:section, "Core",     %r(^PHP Version => (\S+))]                         => [{:save => :php_version}],
+    [:section, "Core",     %r(^memory_limit => (\d+)M => (\d+)M)]             => [{">="  => 256},
+                                                                                  {">="  => 256}],
+    [:section, "Core",     %r(^max_execution_time => (\d+) => (\d+))]         => [{"="   => 18000,
+                                                                                   :note => "max_execution_time should be set very high to assure that indexing completes."},
+                                                                                  {"="   => 18000}],
+    [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]             => [{">="  => 2000,
+                                                                                   :note => " "},
+                                                                                  {">="  => 2000}],
+    [:section, "Core",     %r(^opcache.enable => (\S+))]                      => [{"="   => "On"}],
+    [:section, "Core",     %r(^opcache.memory_consumption => (\d+) => (\d+))] => [{">="  => 256},
+                                                                                  {">="  => 256}],
+    [:section, "Core",     %r(^auto_prepend_file => (.+) => (.+))]            => [{"eq"  => "no value",
+                                                                                   :note => "auto_prepend_file may cause issues"},
+                                                                                  {"eq"  => "no value"}],
+    [:section, "Core",     %r(^auto_append_file => (.+) => (.+))]             => [{"eq"  => "no value",
+                                                                                   :note => "auto_append_file may cause issues"},
+                                                                                  {"eq"  => "no value"}],
+    [:section, "Core",     %r(^disable_functions => (.+) => (.+))]            => [{"eq"  => "no value",
+                                                                                   :note => "disable_functions may cause issues"},
+                                                                                  {"eq"  => "no value"}],
+    [:section, "Core",     %r(^open_basedir => (.+) => (.+))]                 => [{"eq"  => "no value",
+                                                                                   :note => "open_basedir is not supported."},
+                                                                                  {"eq"  => "no value"}],
+    [:section, "Core",     %r(^safe_mode => (.+) => (.+))]                    => [{"eq"  => "Off",
+                                                                                   :note => "safe_mode is not supported."},
+                                                                                  {"eq"  => "Off"}],
+    [:section, "memcache", %r(^Version => (\S+))]                             => [{"eq"  => "3.0.5",
+                                                                                   :save => :memcache_version}],
+    [:section, "mysql",    %r(^Client API version => (.+))]                   => [{:save => :mysql_client_api_version}],
   }
 end
 
@@ -1030,24 +1038,35 @@ end
 class Ps < ShellCommand
   self.cmd = 'ps aux'
   self.matches = {
-    %r(^root.*\s([/a-z]*apache2?\b))      => [{:alsocheck => Apache,
-                                               :save      => :apache}],
-    %r(^root.*\s([/a-z]*httpd\b))         => [{:alsocheck => Apache,
-                                               :save      => :apache}],
-    %r(nginx: master process .* -c (\S*)) => [{:alsocheck => NginxConf}],
-    %r(nginx: master process (\S*))       => [{:alsocheck => NginxExe,
-                                               :save      => :nginx}],
-    %r((memcached).*-m (\d+))             => [{:save      => :memcache},
-                                              {">="       => 1024}],
-    %r(redis-server\s+([\d\.]+:\d+))      => [{:alsocheck => Redis,
-                                               :save      => :redis}],
-    %r(redis-server\s+(/[a-z\./]+))       => [{:alsocheck => RedisConf,
-                                               :save      => :redis}],
-    %r(mysqld.*--log-error=([/\.\w-]+))   => [{:alsocheck => MysqlLog}],
-    %r(php-fpm: master process \((\S+)\)) => [{:alsocheck => PhpFpmConf}],
-    %r(varnishd\s.*-f\s+(/[a-z\./]+))     => [{:alsocheck => VarnishVcl}],
+    %r(^root.*\s([/a-z]*apache2?\b))                   => [{:alsocheck => Apache,
+                                                            :save      => :apache}],
+    %r(^root.*\s([/a-z]*httpd\b))                      => [{:alsocheck => Apache,
+                                                            :save      => :apache}],
+    %r(nginx: master process .* -c (\S*))              => [{:alsocheck => NginxConf}],
+    %r(nginx: master process (\S*))                    => [{:alsocheck => NginxExe,
+                                                            :save      => :nginx}],
+    %r((memcached).*-m (\d+))                          => [{:save      => :memcache},
+                                                           {">="       => 1024}],
+    %r(redis-server\s+([\d\.]+:\d+))                   => [{:alsocheck => Redis,
+                                                            :save      => :redis}],
+    %r(redis-server\s+(/[a-z\./]+))                    => [{:alsocheck => RedisConf,
+                                                            :save      => :redis}],
+    %r(mysqld.*--log-error=([/\.\w-]+))                => [{:alsocheck => MysqlLog}],
+    %r(php-fpm: master process \((\S+)\))              => [{:alsocheck => PhpFpmConf}],
+    %r(varnishd\s)                                     => [{:save      => :runningvarnish}],
+    %r(varnishd\s.*-f\s+(/[a-z\./]+))                  => [{:alsocheck => VarnishVcl}],
+    %r(varnishd\s.*-p\s*http_resp_hdr_len\s*=\s*(\d+)) => [{:save => :varnishresphdrlen}],
   }
   
+   def process_saved
+     if $saved[:runningvarnish]
+       if $saved[:varnishresphdrlen]
+         printline colorize(:greenfg) + "Varnish's http_resp_hdr_len has been set (hopefully as described in http://devdocs.magento.com/guides/v2.0/config-guide/varnish/tshoot-varnish-503.html)" + colorize(:off)
+       else
+         printline colorize(:redbg) + "Set http_resp_hdr_len for Varnish as described in http://devdocs.magento.com/guides/v2.0/config-guide/varnish/tshoot-varnish-503.html" + colorize(:off)
+       end
+     end
+   end
 end
 
 class ApacheLog < ScannableLog
@@ -1218,7 +1237,7 @@ class MysqlVariables < MysqlCommand
     %r(innodb_buffer_pool_size\s(\S+))        => [{">="  => 128*1024*1024,
                                                    :note => "innodb_buffer_pool_size should be >=128MB."}],
     %r(innodb_flush_log_at_trx_commit\s(\S+)) => [{"="  => 2,
-                                                   :note => "innodb_flush_log_at_trx_commit should be 2"}],
+                                                   :note => ""}],
     %r(max_heap_table_size\s(\S+))            => [{">="  => 128*1024*1024,
                                                    :save => :heap_table_size}],
     %r(tmp_table_size\s(\S+))                 => [{">="  => 128*1024*1024,
@@ -1281,22 +1300,42 @@ class MagentoEnvFile < ShellCommand
   
   def initialize(path)
     @path = path
-    self.class.cmd = %Q(php -r "\\\$config = include '#{path}'; print 'username=' . \\\$config['db']['connection']['default']['username'] . ';ipaddress=' . \\\$config['db']['connection']['default']['host'] . ';password=' . \\\$config['db']['connection']['default']['password'] . ';dbname=' . \\\$config['db']['connection']['default']['dbname'] . ';';")
+    self.class.cmd = %Q(php -r "\\\$config = include '#{path}'; print 'username=' . \\\$config['db']['connection']['default']['username'] . ';ipaddress=' . \\\$config['db']['connection']['default']['host'] . ';password=' . \\\$config['db']['connection']['default']['password'] . ';dbname=' . \\\$config['db']['connection']['default']['dbname'] . ';redishost=' . \\\$config['session']['redis']['host'] . ';';redisport=' . \\\$config['session']['redis']['port'] . ';';")
   end
 
   self.matches = {
     %r(username=([^;]*))  => [{:save => :username}],
     %r(ipaddress=([^;]*)) => [{:save => :ipaddress}],
     %r(password=([^;]*))  => [{:save => :password}],
-    %r(dbname=([^;]*))  => [{:save => :dbname}],
+    %r(dbname=([^;]*))    => [{:save => :dbname}],
+    %r(redishost=([^;]*)) => [{:save => :redishost}],
+    %r(redisport=([^;]*)) => [{:save => :redisport}],
   }
 
+  def scan
+    if $options[:verbose]
+      open @path do |s|
+        while (line = s.gets)
+          puts line
+        end
+      end
+    end
+    super
+  end
+
   def also_check
-    ipaddress = $saved[:ipaddress]
-    username  = $saved[:username]
-    password  = $saved[:password]
-    dbname    = $saved[:dbname]
-    return [[Mysql, ipaddress, username, password, dbname]]
+    alsocheck = []
+    if ipaddress = $saved[:ipaddress]
+      username  = $saved[:username]
+      password  = $saved[:password]
+      dbname    = $saved[:dbname]
+      alsocheck.push [Mysql, ipaddress, username, password, dbname]
+    end
+    if redishost = $saved[:redishost]
+      redisport = $saved[:redisport]
+      alsocheck.push [Redis, redishost, redisport]
+    end
+    return alsocheck
   end
 end
 
