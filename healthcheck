@@ -121,7 +121,7 @@ class Scannable
       end
       $saved[value].push data
     elsif test == :toggle
-      $saved[value] = not($saved[value])
+      $saved[value] = !($saved[value])
       return true
     else
       if value.class == Symbol
@@ -1005,7 +1005,7 @@ class PhpI < ShellCommand
                                                                                    :note => "max_execution_time should be set very high to assure that indexing completes."},
                                                                                   {"="   => 18000}],
     [:section, "Core",     %r(^max_input_vars => (\d+) => (\d+))]             => [{">="  => 2000,
-                                                                                   :note => " "},
+                                                                                   :note => "max_input_vars should be from 2000 to 5000 or even more if needed"},
                                                                                   {">="  => 2000}],
     [:section, "Core",     %r(^opcache.enable => (\S+))]                      => [{"="   => "On"}],
     [:section, "Core",     %r(^opcache.memory_consumption => (\d+) => (\d+))] => [{">="  => 256},
